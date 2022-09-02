@@ -187,6 +187,10 @@ pub enum TrustedCall {
 	balance_transfer(AccountId, AccountId, Balance),
 	balance_unshield(AccountId, AccountId, Balance, ShardIdentifier), // (AccountIncognito, BeneficiaryPublicAccount, Amount, Shard)
 	balance_shield(AccountId, AccountId, Balance), // (Root, AccountIncognito, Amount)
+	// [interstellar] pallet ocw-garble
+	garble_and_strip_display_circuits_package_signed(AccountId, std::vec::Vec<u8>),
+	// [interstellar] pallet tx_validation
+	tx_validation_check_input(AccountId, String, std::vec::Vec<u8>),
 	#[cfg(feature = "evm")]
 	evm_withdraw(AccountId, H160, Balance), // (Origin, Address EVM Account, Value)
 	// (Origin, Source, Target, Input, Value, Gas limit, Max fee per gas, Max priority fee per gas, Nonce, Access list)
@@ -239,6 +243,13 @@ impl TrustedCall {
 			TrustedCall::balance_transfer(sender_account, ..) => sender_account,
 			TrustedCall::balance_unshield(sender_account, ..) => sender_account,
 			TrustedCall::balance_shield(sender_account, ..) => sender_account,
+			// [interstellar] pallet ocw-garble
+			TrustedCall::garble_and_strip_display_circuits_package_signed(
+				sender_account,
+				_tx_msg,
+			) => sender_account,
+			// [interstellar] pallet_tx_validation
+			TrustedCall::tx_validation_check_input(sender_account, ..) => sender_account,
 			#[cfg(feature = "evm")]
 			TrustedCall::evm_withdraw(sender_account, ..) => sender_account,
 			#[cfg(feature = "evm")]
@@ -272,6 +283,8 @@ pub enum TrustedGetter {
 	free_balance(AccountId),
 	reserved_balance(AccountId),
 	nonce(AccountId),
+	// [interstellar] pallet ocw-garble
+	most_recent_circuits(AccountId),
 	#[cfg(feature = "evm")]
 	evm_nonce(AccountId),
 	#[cfg(feature = "evm")]
@@ -286,6 +299,8 @@ impl TrustedGetter {
 			TrustedGetter::free_balance(sender_account) => sender_account,
 			TrustedGetter::reserved_balance(sender_account) => sender_account,
 			TrustedGetter::nonce(sender_account) => sender_account,
+			// [interstellar] pallet ocw-garble
+			TrustedGetter::most_recent_circuits(account) => account,
 			#[cfg(feature = "evm")]
 			TrustedGetter::evm_nonce(sender_account) => sender_account,
 			#[cfg(feature = "evm")]

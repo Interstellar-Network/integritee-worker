@@ -5,9 +5,13 @@ Integritee worker for Integritee [node](https://github.com/integritee-network/in
 This is part of [Integritee](https://integritee.network)
 
 ## Build and Run
-Please see our [Integritee Book](https://docs.integritee.network/4-development/4.4-sdk) to learn how to build and run this.
+~~Please see our [Integritee Book](https://docs.integritee.network/4-development/4.4-sdk) to learn how to build and run this.~~
 
-To start multiple worker and a node with one simple command: Check out [this README](local-setup/README.md).
+**WIP** `PATH=/opt/intel/bin:$PATH make && (cd bin && RUST_LOG=warn RUST_BACKTRACE=1 ./integritee-service --clean-reset -P 2090 -p 9990 -r 3490 -w 2091 -h 4545 run --skip-ra --dev)`
+
+**WIP**  `(cd cli/ && ./demo_interstellar.sh -p 9990 -P 2090)`
+
+T  o start multiple worker and a node with one simple command: Check out [this README](local-setup/README.md).
 
 ## Docker
 See [docker/README.md](docker/README.md).

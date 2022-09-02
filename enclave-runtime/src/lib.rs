@@ -486,3 +486,14 @@ pub unsafe extern "C" fn trigger_parentchain_block_import() -> sgx_status_t {
 		Err(e) => Error::ComponentContainer(e).into(),
 	}
 }
+
+/// W/A "undefined reference to `__assert_fail'" for debug builds
+/// https://github.com/apache/incubator-teaclave-sgx-sdk/issues/44
+// TODO! readd #[cfg b/c this will probably fail to compile in NON debug?
+// #[cfg(debug_assertions)]
+#[no_mangle]
+pub extern "C"
+fn __assert_fail (__assertion: *const u8, __file: *const u8, __line: u32, __function: *const u8) -> ! {
+    use core::intrinsics::abort;
+    unsafe {abort()}
+}

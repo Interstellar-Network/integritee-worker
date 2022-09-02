@@ -17,7 +17,13 @@
 
 use crate::{
 	trusted_base_cli::commands::{
-		balance::BalanceCommand, set_balance::SetBalanceCommand, transfer::TransferCommand,
+		balance::BalanceCommand,
+		interstellar::{
+			ocw_garble_garble_and_strip_display_circuits_package_signed,
+			ocw_garble_get_most_recent_circuits_package, tx_validation_check_input,
+		},
+		set_balance::SetBalanceCommand,
+		transfer::TransferCommand,
 		unshield_funds::UnshieldFundsCommand,
 	},
 	trusted_command_utils::get_keystore_path,
@@ -50,6 +56,33 @@ pub enum TrustedBaseCli {
 
 	/// Transfer funds from an incognito account to an parentchain account
 	UnshieldFunds(UnshieldFundsCommand),
+
+	/// [interstellar]
+	GarbleAndStripDisplayCircuitsPackageSigned {
+		/// AccountId in ss58check format
+		account: String,
+		/// Transaction message; that is what will be display on the "pinpad screen" in the mobile app
+		tx_msg: String,
+	},
+
+	/// [interstellar]
+	/// pallet_ocw_garble: Get Circuits - query circuits state for account in keystore
+	GetCircuitsPackage {
+		/// AccountId in ss58check format
+		account: String,
+	},
+
+	/// [interstellar]
+	/// pallet_tx_validation: Check input
+	TxCheckInput {
+		/// AccountId in ss58check format
+		account: String,
+		// WARNING: Vec<u8> means digits are expected else:
+		// error: Invalid value "QmUFCR3bVhx6AnMkzo2UeMG8ev39kBqgcGXNDfFx5FyRmi" for '<IPFS_CID>...': invalid digit found in string
+		// --> ipfs_cid MUST use String
+		ipfs_cid: String,
+		input_digits: Vec<u8>,
+	},
 }
 
 impl TrustedBaseCli {
@@ -61,6 +94,18 @@ impl TrustedBaseCli {
 			TrustedBaseCli::SetBalance(cmd) => cmd.run(cli, trusted_args),
 			TrustedBaseCli::Balance(cmd) => cmd.run(cli, trusted_args),
 			TrustedBaseCli::UnshieldFunds(cmd) => cmd.run(cli, trusted_args),
+			// [interstellar]
+			TrustedBaseCli::GarbleAndStripDisplayCircuitsPackageSigned { account, tx_msg } =>
+				ocw_garble_garble_and_strip_display_circuits_package_signed(
+					cli,
+					trusted_args,
+					account,
+					tx_msg,
+				),
+			TrustedBaseCli::GetCircuitsPackage { account } =>
+				ocw_garble_get_most_recent_circuits_package(cli, trusted_args, account),
+			TrustedBaseCli::TxCheckInput { account, ipfs_cid, input_digits } =>
+				tx_validation_check_input(cli, trusted_args, account, ipfs_cid, input_digits),
 		}
 	}
 }

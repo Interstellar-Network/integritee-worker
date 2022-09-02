@@ -35,6 +35,17 @@ Rust_Enclave_Files := $(wildcard src/*.rs) $(wildcard ../stf/src/*.rs)
 Rust_Target_Path := $(CURDIR)/../../../xargo
 RUSTFLAGS :="-C target-feature=+avx2"
 
+# IMPORTANT: DO NOT try and build the enclave in anything other than release!
+# else: Compiling enclave-runtime/enclave.so
+# /opt/intel/bin/ld: ./lib/libenclave.a(limbs.o): in function `LIMBS_less_than':
+# /home/pratn/.cargo/git/checkouts/ring-sgx-f3f2b49526f918ea/844efe2/crypto/limbs/limbs.c:71: undefined reference to `__assert_fail'
+# only needed for enclave-runtime build; in "NOT RELEASE"
+# https://github.com/apache/incubator-teaclave-sgx-sdk/issues/373
+# 	-> does NOT work?
+# https://github.com/apache/incubator-teaclave-sgx-sdk/issues/44
+# https://github.com/integritee-network/worker/issues/761
+# and a bunch of other issues with the same "__assert_fail"
+# TODO? ifeq ($(DEBUG_BUILD), 1)
 ifeq ($(SGX_DEBUG), 1)
 	OUTPUT_PATH := release
 	CARGO_TARGET := --release

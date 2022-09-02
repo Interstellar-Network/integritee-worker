@@ -48,6 +48,12 @@ itp-time-utils = { path = "../core-primitives/time-utils" }
 itp-types = { path = "../core-primitives/types" }
 itp-utils = { path = "../core-primitives/utils" }
 
+# [interstellar]
+pallet-mobile-registry = { default-features = false, path = "../interstellar-pallets/pallets/mobile-registry" }
+pallet-ocw-circuits = { default-features = false, path = "../interstellar-pallets/pallets/ocw-circuits" }
+pallet-ocw-garble = { default-features = false, path = "../interstellar-pallets/pallets/ocw-garble" }
+pallet-tx-validation = { default-features = false, path = "../interstellar-pallets/pallets/tx-validation" }
+
 [features]
 default = []
 evm = [

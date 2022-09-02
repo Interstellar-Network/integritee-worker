@@ -19,7 +19,9 @@
 use crate::test_genesis::test_genesis_setup;
 
 use crate::{
-	helpers::{enclave_signer_account, ensure_enclave_signer_account},
+	helpers::{
+		enclave_signer_account, ensure_enclave_signer_account, get_most_recent_circuits_for,
+	},
 	AccountData, AccountId, Getter, Index, ParentchainHeader, PublicGetter, ShardIdentifier, State,
 	StateTypeDiff, Stf, StfError, StfResult, TrustedCall, TrustedCallSigned, TrustedGetter,
 	ENCLAVE_ACCOUNT_KEY,
@@ -144,6 +146,13 @@ impl Stf {
 					} else {
 						None
 					},
+				// [interstellar] pallet ocw-garble
+				TrustedGetter::most_recent_circuits(who) =>
+					if let Some(circuits) = get_most_recent_circuits_for(&who) {
+						Some(circuits.encode())
+					} else {
+						None
+					},
 			},
 			Getter::public(g) => match g {
 				PublicGetter::some_value => Some(42u32.encode()),
@@ -225,6 +234,56 @@ impl Stf {
 					ensure_enclave_signer_account(&enclave_account)?;
 					debug!("balance_shield({}, {})", account_id_to_string(&who), value);
 					Self::shield_funds(who, value)?;
+					Ok(())
+				},
+				// [interstellar] pallet ocw-garble
+				TrustedCall::garble_and_strip_display_circuits_package_signed(account, tx_msg) => {
+					let origin = ita_sgx_runtime::Origin::signed(account.clone());
+					info!(
+						"garble_and_strip_display_circuits_package_signed({}, {},)",
+						account_id_to_string(&account),
+						std::str::from_utf8(&tx_msg).expect("tx_msg utf8"),
+					);
+
+					ita_sgx_runtime::OcwGarbleCall::<Runtime>::garble_and_strip_display_circuits_package_signed {
+						tx_msg,
+					}
+					.dispatch_bypass_filter(origin)
+					.map_err(|e| {
+						StfError::Dispatch(format!("OcwGarble garble_and_strip_display_circuits_package_signed error: {:?}", e.error))
+					})?;
+
+					Ok(())
+				},
+				// [interstellar] pallet tx-validation
+				TrustedCall::tx_validation_check_input(account, ipfs_cid, input_digits) => {
+					let origin = ita_sgx_runtime::Origin::signed(account.clone());
+					info!(
+						"tx_validation_check_input({}, {}, {:?})",
+						account_id_to_string(&account),
+						&ipfs_cid,
+						&input_digits,
+					);
+
+					ita_sgx_runtime::TxValidationCall::<Runtime>::check_input {
+						ipfs_cid: ipfs_cid.clone().into_bytes(),
+						input_digits: input_digits,
+					}
+					.dispatch_bypass_filter(origin.clone())
+					.map_err(|e| {
+						StfError::Dispatch(format!("TxValidationCall tx_validation_check_input error: {:?}", e.error))
+					})
+					.and_then(|result|{
+						ita_sgx_runtime::TxRegistryCall::<Runtime>::store_tx_result {
+							message_pgarbled_cid: ipfs_cid.into_bytes(),
+							result: pallet_tx_registry::TxResult::TxPass,
+						}
+						.dispatch_bypass_filter(origin)
+						.map_err(|e| {
+							StfError::Dispatch(format!("TxRegistryCall store_tx_result error: {:?}", e.error))
+						})
+					})?;
+
 					Ok(())
 				},
 				#[cfg(feature = "evm")]
@@ -430,6 +489,19 @@ impl Stf {
 			TrustedCall::balance_transfer(_, _, _) => debug!("No storage updates needed..."),
 			TrustedCall::balance_unshield(_, _, _, _) => debug!("No storage updates needed..."),
 			TrustedCall::balance_shield(_, _, _) => debug!("No storage updates needed..."),
+			// [interstellar]
+			TrustedCall::garble_and_strip_display_circuits_package_signed(_, _) => {
+				// FAIL: broken for now: https://github.com/integritee-network/worker/issues/976
+				// DO NOT add: it causes eg "[2022-09-08T13:28:02Z ERROR itp_stf_executor::executor] Fatal Error. Failed to attempt call execution: OcallApi(Storage(Codec(Error { cause: None, desc: "Not enough data to decode vector" })))"
+				// and then the whole pallet_ocw_garble is broken!
+				// key_hashes.push(storage_value_key("OcwCircuits", "DisplaySkcdPackageValue"));
+				// TODO TOREMOVE
+				// key_hashes.push(storage_value_key("Timestamp", "Now"));
+			},
+			// [interstellar]
+			TrustedCall::tx_validation_check_input(_, _, _) => {
+				// key_hashes.push(storage_value_key("TxRegistry", "TxResultsMap"));
+			},
 			#[cfg(feature = "evm")]
 			_ => debug!("No storage updates needed..."),
 		};

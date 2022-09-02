@@ -96,3 +96,36 @@ pub fn ensure_enclave_signer_account(account: &AccountId) -> StfResult<()> {
 		Err(StfError::RequireEnclaveSignerAccount)
 	}
 }
+
+/// [interstellar] get the LAST(ie most recent) circuits from Storage for a given account
+/// Reminder: a user CAN have several circuits pending!
+/// return: the LAST(ie most recent) circuits package if several are pending
+///
+/// NOTE: it SHOULD roughly match with "fn get_latest_pending_display_stripped_circuits_package"
+/// from https://github.com/Interstellar-Network/wallet-app/blob/master/shared/rust/substrate-client/src/lib.rs
+pub fn get_most_recent_circuits_for(
+	account: &AccountId,
+) -> Option<pallet_ocw_garble::DisplayStrippedCircuitsPackage> {
+	info!("get_most_recent_circuits_for account : {:?}", account_id_to_string(account));
+	if let Some(pending_circuits) =
+		get_storage_map::<AccountId, pallet_ocw_garble::PendingCircuitsType>(
+			"OcwGarble",
+			"AccountToPendingCircuitsMap",
+			account,
+			// cf https://github.com/paritytech/frame-metadata/blob/main/frame-metadata/src/v14.rs#L252
+			// For the valid hashers;
+			// It MUST match "AccountToPendingCircuitsMap"
+			&StorageHasher::Twox128,
+		) {
+		if let Some(last) = pending_circuits.last() {
+			info!("get_most_recent_circuits_for last is: {:?}", last);
+			Some(last.clone())
+		} else {
+			info!("no pending circuits [2]");
+			None
+		}
+	} else {
+		info!("no pending circuits [1]");
+		None
+	}
+}

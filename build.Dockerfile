@@ -30,6 +30,20 @@ ENV SGX_MODE SW
 
 ENV HOME=/root/work
 
+# copy pasted this block from below "FROM integritee/integritee-dev:0.1.9 AS cached-builder" and then mount host's <-> SCCACHE_DIR
+# install prebuilt binary, cf prepare_rust/action.yml
+# RUN rustup default stable && cargo install sccache --root /usr/local/cargo
+# ENV PATH "$PATH:/usr/local/cargo/bin"
+RUN mkdir /tmp/sscache && \
+	cd /tmp/sscache && \
+	wget -c https://github.com/mozilla/sccache/releases/download/v0.3.0/sccache-v0.3.0-x86_64-unknown-linux-musl.tar.gz -O - | tar -xz --strip-components 1 && \
+	chmod +x sccache && \
+	mv sccache /usr/local/bin/sccache && \
+	sccache --version
+ENV SCCACHE_CACHE_SIZE="3G"
+ENV SCCACHE_DIR=$HOME/.cache/sccache
+ENV RUSTC_WRAPPER="/usr/local/bin/sccache"
+
 ARG WORKER_MODE_ARG
 ENV WORKER_MODE=$WORKER_MODE_ARG
 
@@ -39,9 +53,9 @@ ENV ADDITIONAL_FEATURES=$ADDITIONAL_FEATURES_ARG
 WORKDIR $HOME/worker
 COPY . .
 
-RUN make
+RUN (make && echo "make OK !" && sccache --show-stats) || (sccache --show-stats && echo "error: make" && exit 1)
 
-RUN cargo test --release
+RUN (cargo test --release && echo "cargo test --release OK !" && sccache --show-stats) || (sccache --show-stats && echo "error: cargo test --release" && exit 1)
 
 
 ### Cached Builder Stage (WIP)

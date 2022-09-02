@@ -16,7 +16,7 @@
 
 //! The Substrate Node Template sgx-runtime for SGX.
 //! This is only meant to be used inside an SGX enclave with `#[no_std]`
-//!
+//!runtim
 //! you should assemble your sgx-runtime to be used with your STF here
 //! and get all your needed pallets in
 
@@ -38,6 +38,7 @@ pub use evm::{
 	SubstrateBlockHashMapping, GAS_PER_SECOND, MAXIMUM_BLOCK_WEIGHT, WEIGHT_PER_GAS,
 };
 
+use codec::Encode;
 use core::convert::{TryFrom, TryInto};
 use frame_support::weights::ConstantMultiplier;
 use pallet_transaction_payment::CurrencyAdapter;
@@ -45,7 +46,9 @@ use sp_api::impl_runtime_apis;
 use sp_core::OpaqueMetadata;
 use sp_runtime::{
 	create_runtime_str, generic,
-	traits::{AccountIdLookup, BlakeTwo256, Block as BlockT, IdentifyAccount, Verify},
+	traits::{
+		AccountIdLookup, BlakeTwo256, Block as BlockT, IdentifyAccount, SaturatedConversion, Verify,
+	},
 	MultiSignature,
 };
 use sp_std::prelude::*;
@@ -62,8 +65,14 @@ pub use frame_support::{
 	StorageValue,
 };
 pub use pallet_balances::Call as BalancesCall;
+// [interstellar]
+pub use pallet_ocw_garble::Call as OcwGarbleCall;
 pub use pallet_parentchain::Call as ParentchainCall;
 pub use pallet_timestamp::Call as TimestampCall;
+// [interstellar]
+pub use pallet_tx_validation::Call as TxValidationCall;
+// [interstellar]
+pub use pallet_tx_registry::Call as TxRegistryCall;
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Permill};
@@ -93,6 +102,8 @@ pub type SignedExtra = (
 pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
+/// The payload being signed in transactions.
+pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
 	Runtime,
@@ -290,6 +301,104 @@ impl pallet_parentchain::Config for Runtime {
 	type WeightInfo = ();
 }
 
+// For pallet-ocw
+impl pallet_ocw_garble::Config for Runtime {
+	type AuthorityId = pallet_ocw_garble::crypto::TestAuthId;
+	type Call = Call;
+	type Event = Event;
+}
+
+// For pallet-ocw-circuits
+parameter_types! {
+	pub const GracePeriod: BlockNumber = 3;
+	pub const UnsignedInterval: BlockNumber = 3;
+	pub const UnsignedPriority: BlockNumber = 3;
+}
+
+impl pallet_ocw_circuits::Config for Runtime {
+	type AuthorityId = pallet_ocw_circuits::crypto::TestAuthId;
+	type Call = Call;
+	type Event = Event;
+	// TODO interstellar
+	// type GracePeriod = GracePeriod;
+	// type UnsignedInterval = UnsignedInterval;
+	// type UnsignedPriority = UnsignedPriority;
+}
+
+// For pallet-tx-validation
+impl pallet_tx_validation::Config for Runtime {
+	type Event = Event;
+}
+
+impl pallet_mobile_registry::Config for Runtime {
+	type Event = Event;
+}
+
+impl pallet_tx_registry::Config for Runtime {}
+
+////////////////////////////////////////////////////////////////////////////////
+// copy-pasted from https://github.com/paritytech/substrate/blob/master/bin/node/runtime/src/lib.rs#L1077
+impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
+where
+	Call: From<LocalCall>,
+{
+	fn create_transaction<C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>>(
+		call: Call,
+		public: <Signature as sp_runtime::traits::Verify>::Signer,
+		account: AccountId,
+		nonce: Index,
+	) -> Option<(Call, <UncheckedExtrinsic as sp_runtime::traits::Extrinsic>::SignaturePayload)> {
+		let tip = 0;
+		// take the biggest period possible.
+		let period =
+			BlockHashCount::get().checked_next_power_of_two().map(|c| c / 2).unwrap_or(2) as u64;
+		let current_block = System::block_number()
+			.saturated_into::<u64>()
+			// The `System::block_number` is initialized with `n+1`,
+			// so the actual block number is `n`.
+			.saturating_sub(1);
+		let era = sp_runtime::generic::Era::mortal(period, current_block);
+		let extra = (
+			frame_system::CheckNonZeroSender::<Runtime>::new(),
+			frame_system::CheckSpecVersion::<Runtime>::new(),
+			frame_system::CheckTxVersion::<Runtime>::new(),
+			frame_system::CheckGenesis::<Runtime>::new(),
+			frame_system::CheckEra::<Runtime>::from(era),
+			frame_system::CheckNonce::<Runtime>::from(nonce),
+			frame_system::CheckWeight::<Runtime>::new(),
+			// TODO?
+			// pallet_asset_tx_payment::ChargeAssetTxPayment::<Runtime>::from(tip, None),
+			pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
+		);
+		let raw_payload = SignedPayload::new(call, extra)
+			.map_err(|e| {
+				log::warn!("Unable to create signed payload: {:?}", e);
+			})
+			.ok()?;
+		let signature = raw_payload.using_encoded(|payload| C::sign(payload, public))?;
+		// TODO? Note that it requires pallet_indices
+		// let address = Indices::unlookup(account);
+		let address = sp_runtime::MultiAddress::Id(account);
+		let (call, extra, _) = raw_payload.deconstruct();
+		Some((call, (address, signature, extra)))
+	}
+}
+
+impl frame_system::offchain::SigningTypes for Runtime {
+	type Public = <Signature as sp_runtime::traits::Verify>::Signer;
+	type Signature = Signature;
+}
+
+impl<C> frame_system::offchain::SendTransactionTypes<C> for Runtime
+where
+	Call: From<C>,
+{
+	type Extrinsic = UncheckedExtrinsic;
+	type OverarchingCall = Call;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 // The plain sgx-runtime without the `evm-pallet`
 #[cfg(not(feature = "evm"))]
 construct_runtime!(
@@ -304,6 +413,13 @@ construct_runtime!(
 		TransactionPayment: pallet_transaction_payment::{Pallet, Storage, Event<T>},
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Parentchain: pallet_parentchain::{Pallet, Call, Storage},
+		// Include the custom logic from the pallets in the runtime.
+		// NOTE: that will generate extrinsics named "ocwGarble" and "ocwCircuits" in the front end
+		MobileRegistry: pallet_mobile_registry,
+		OcwCircuits: pallet_ocw_circuits, // ::{Pallet, Call, Storage, Event<T>, ValidateUnsigned}
+		OcwGarble: pallet_ocw_garble, // ::{Pallet, Call, Storage, Event<T>, ValidateUnsigned}
+		TxValidation: pallet_tx_validation,
+		TxRegistry: pallet_tx_registry,
 	}
 );
 

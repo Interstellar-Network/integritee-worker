@@ -1178,9 +1178,9 @@ dependencies = [
 
 [[package]]
 name = "env_logger"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b2cf0344971ee6c64c31be0d530793fba457d322dfec2810c453d0ef228f9c3"
+checksum = "c90bf5f19754d10198ccb95b70664fc925bd1fc090a0fd9a6ebc54acc8cd6272"
 dependencies = [
  "atty",
  "humantime",
@@ -2394,6 +2394,10 @@ dependencies = [
  "log 0.4.17",
  "pallet-balances",
  "pallet-evm",
+ "pallet-mobile-registry",
+ "pallet-ocw-circuits",
+ "pallet-ocw-garble",
+ "pallet-tx-validation",
  "parity-scale-codec",
  "primitive-types",
  "rand 0.8.5",
@@ -2591,16 +2595,22 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "hex-literal",
+ "log 0.4.17",
  "pallet-aura",
  "pallet-balances",
  "pallet-evm",
  "pallet-grandpa",
+ "pallet-mobile-registry",
+ "pallet-ocw-circuits",
+ "pallet-ocw-garble",
  "pallet-parentchain",
  "pallet-randomness-collective-flip",
  "pallet-sudo",
  "pallet-timestamp",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
+ "pallet-tx-registry",
+ "pallet-tx-validation",
  "parity-scale-codec",
  "scale-info",
  "serde 1.0.144",
@@ -2635,6 +2645,11 @@ dependencies = [
  "its-state",
  "log 0.4.17",
  "pallet-balances",
+ "pallet-mobile-registry",
+ "pallet-ocw-circuits",
+ "pallet-ocw-garble",
+ "pallet-tx-registry",
+ "pallet-tx-validation",
  "parity-scale-codec",
  "rlp",
  "sc-keystore",
@@ -4685,6 +4700,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "ocw-common"
+version = "0.1.0"
+dependencies = [
+ "base64 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bytes 1.2.1",
+ "hex",
+ "itc-rest-client",
+ "log 0.4.17",
+ "parity-scale-codec",
+ "prost",
+ "serde 1.0.144",
+ "serde_json 1.0.85",
+ "sgx_tstd",
+ "sp-io 6.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.27)",
+ "sp-runtime",
+ "sp-std 4.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.27)",
+ "url 2.1.1",
+ "url 2.2.2",
+]
+
+[[package]]
 name = "ofb"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4882,6 +4918,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-mobile-registry"
+version = "4.0.0-dev"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log 0.4.17",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io 6.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.27)",
+ "sp-runtime",
+ "sp-std 4.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.27)",
+]
+
+[[package]]
 name = "pallet-multisig"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.27#8eff668a42325aeb4433eace1604f4d286a6ec05"
@@ -4891,6 +4943,55 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "sp-io 6.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.27)",
+ "sp-runtime",
+ "sp-std 4.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.27)",
+]
+
+[[package]]
+name = "pallet-ocw-circuits"
+version = "4.0.0-dev"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log 0.4.17",
+ "ocw-common",
+ "parity-scale-codec",
+ "prost",
+ "prost-types",
+ "scale-info",
+ "serde 1.0.144",
+ "serde_json 1.0.85",
+ "sp-core",
+ "sp-io 6.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.27)",
+ "sp-keystore",
+ "sp-runtime",
+ "sp-std 4.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.27)",
+]
+
+[[package]]
+name = "pallet-ocw-garble"
+version = "4.0.0-dev"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log 0.4.17",
+ "ocw-common",
+ "pallet-timestamp",
+ "pallet-tx-validation",
+ "parity-scale-codec",
+ "prost",
+ "prost-types",
+ "rand 0.8.5",
+ "rand_chacha 0.3.1",
+ "scale-info",
+ "serde 1.0.144",
+ "serde_json 1.0.85",
+ "sgx_tstd",
+ "sp-core",
+ "sp-io 6.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.27)",
+ "sp-keystore",
  "sp-runtime",
  "sp-std 4.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.27)",
 ]
@@ -5110,6 +5211,42 @@ dependencies = [
  "serde 1.0.144",
  "sp-runtime",
  "sp-std 4.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.27)",
+]
+
+[[package]]
+name = "pallet-tx-registry"
+version = "4.0.0-dev"
+dependencies = [
+ "env_logger",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log 0.4.17",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io 6.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.27)",
+ "sp-runtime",
+ "sp-std 4.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.27)",
+ "test-log",
+]
+
+[[package]]
+name = "pallet-tx-validation"
+version = "4.0.0-dev"
+dependencies = [
+ "env_logger",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log 0.4.17",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io 6.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.27)",
+ "sp-runtime",
+ "sp-std 4.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.27)",
+ "test-log",
 ]
 
 [[package]]
@@ -5539,6 +5676,39 @@ dependencies = [
  "procfs",
  "protobuf",
  "thiserror 1.0.32",
+]
+
+[[package]]
+name = "prost"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "399c3c31cdec40583bb68f0b18403400d01ec4289c383aa047560439952c4dd7"
+dependencies = [
+ "bytes 1.2.1",
+ "prost-derive",
+]
+
+[[package]]
+name = "prost-derive"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7345d5f0e08c0536d7ac7229952590239e77abf0a0100a1b1d890add6ea96364"
+dependencies = [
+ "anyhow",
+ "itertools",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "prost-types"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4dfaa718ad76a44b3415e6c4d53b17c8f99160dcb3a99b10470fce8ad43f6e3e"
+dependencies = [
+ "bytes 1.2.1",
+ "prost",
 ]
 
 [[package]]
@@ -7577,6 +7747,17 @@ name = "termtree"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "507e9898683b6c43a9aa55b64259b721b52ba226e0f3779137e50ad114a4c90b"
+
+[[package]]
+name = "test-log"
+version = "0.2.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "38f0c854faeb68a048f0f2dc410c5ddae3bf83854ef0e4977d58306a5edef50e"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "textwrap"

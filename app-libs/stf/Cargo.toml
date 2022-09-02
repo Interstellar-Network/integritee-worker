@@ -40,6 +40,13 @@ my-node-runtime = { package = "integritee-node-runtime", optional = true, git = 
 substrate-api-client = { optional = true, git = "https://github.com/scs/substrate-api-client.git", branch = "polkadot-v0.9.27" }
 substrate-client-keystore = { optional = true, git = "https://github.com/scs/substrate-api-client.git", branch = "polkadot-v0.9.27" }
 
+# [interstellar]
+pallet-mobile-registry = { default-features = false, path = "../../interstellar-pallets/pallets/mobile-registry" }
+pallet-ocw-circuits = { default-features = false, path = "../../interstellar-pallets/pallets/ocw-circuits" }
+pallet-ocw-garble = { default-features = false, path = "../../interstellar-pallets/pallets/ocw-garble" }
+pallet-tx-validation = { default-features = false, path = "../../interstellar-pallets/pallets/tx-validation" }
+pallet-tx-registry = { default-features = false, path = "../../interstellar-pallets/pallets/tx-registry" }
+
 [dev-dependencies]
 sp-keyring = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.27" }
 
@@ -78,6 +85,12 @@ std = [
     "sp-application-crypto/std",
     "sp-runtime/std",
     "sc-keystore",
+    # [interstellar]
+	"pallet-mobile-registry/std",
+	"pallet-ocw-circuits/std",
+	"pallet-ocw-garble/std",
+	"pallet-tx-validation/std",
+    "pallet-tx-registry/std",
     # scs/integritee
     "my-node-runtime",
     "sp-io/std",

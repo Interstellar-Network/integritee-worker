@@ -122,6 +122,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.65"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "98161a4e3e2184da77bb14f02184cdd111e83bbbcc9979dfee3c44b9a85f5602"
+
+[[package]]
 name = "arrayref"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1466,16 +1472,22 @@ dependencies = [
  "frame-support",
  "frame-system",
  "frame-system-rpc-runtime-api",
+ "log",
  "pallet-aura",
  "pallet-balances",
  "pallet-evm",
  "pallet-grandpa",
+ "pallet-mobile-registry",
+ "pallet-ocw-circuits",
+ "pallet-ocw-garble",
  "pallet-parentchain",
  "pallet-randomness-collective-flip",
  "pallet-sudo",
  "pallet-timestamp",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
+ "pallet-tx-registry",
+ "pallet-tx-validation",
  "parity-scale-codec",
  "scale-info",
  "sp-api",
@@ -1508,6 +1520,11 @@ dependencies = [
  "its-state",
  "log",
  "pallet-balances",
+ "pallet-mobile-registry",
+ "pallet-ocw-circuits",
+ "pallet-ocw-garble",
+ "pallet-tx-registry",
+ "pallet-tx-validation",
  "parity-scale-codec",
  "rlp",
  "sgx_tstd",
@@ -2612,6 +2629,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "ocw-common"
+version = "0.1.0"
+dependencies = [
+ "base64 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bytes 1.2.1",
+ "hex",
+ "itc-rest-client",
+ "log",
+ "parity-scale-codec",
+ "prost",
+ "serde 1.0.144",
+ "serde_json 1.0.85",
+ "sgx_tstd",
+ "sp-io",
+ "sp-runtime",
+ "sp-std 4.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.27)",
+ "url",
+]
+
+[[package]]
 name = "ofb"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2736,6 +2773,63 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-mobile-registry"
+version = "4.0.0-dev"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "log",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-std 4.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.27)",
+]
+
+[[package]]
+name = "pallet-ocw-circuits"
+version = "4.0.0-dev"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "log",
+ "ocw-common",
+ "parity-scale-codec",
+ "prost",
+ "prost-types",
+ "scale-info",
+ "serde 1.0.144",
+ "serde_json 1.0.85",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std 4.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.27)",
+]
+
+[[package]]
+name = "pallet-ocw-garble"
+version = "4.0.0-dev"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "log",
+ "ocw-common",
+ "pallet-timestamp",
+ "pallet-tx-validation",
+ "parity-scale-codec",
+ "prost",
+ "prost-types",
+ "rand 0.8.5",
+ "rand_chacha 0.3.1",
+ "scale-info",
+ "serde 1.0.144",
+ "serde_json 1.0.85",
+ "sgx_tstd",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std 4.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.27)",
+]
+
+[[package]]
 name = "pallet-parentchain"
 version = "0.9.0"
 source = "git+https://github.com/integritee-network/pallets.git?branch=sdk-v0.10.0-polkadot-v0.9.27#5211955c9bb3e2dfa86f30a782f13ccfda97daf9"
@@ -2839,6 +2933,30 @@ dependencies = [
  "parity-scale-codec",
  "sp-api",
  "sp-runtime",
+]
+
+[[package]]
+name = "pallet-tx-registry"
+version = "4.0.0-dev"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "log",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-std 4.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.27)",
+]
+
+[[package]]
+name = "pallet-tx-validation"
+version = "4.0.0-dev"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "log",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-std 4.0.0 (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.27)",
 ]
 
 [[package]]
@@ -3024,6 +3142,39 @@ dependencies = [
 ]
 
 [[package]]
+name = "prost"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "399c3c31cdec40583bb68f0b18403400d01ec4289c383aa047560439952c4dd7"
+dependencies = [
+ "bytes 1.2.1",
+ "prost-derive",
+]
+
+[[package]]
+name = "prost-derive"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7345d5f0e08c0536d7ac7229952590239e77abf0a0100a1b1d890add6ea96364"
+dependencies = [
+ "anyhow",
+ "itertools",
+ "proc-macro2",
+ "quote 1.0.21",
+ "syn 1.0.99",
+]
+
+[[package]]
+name = "prost-types"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4dfaa718ad76a44b3415e6c4d53b17c8f99160dcb3a99b10470fce8ad43f6e3e"
+dependencies = [
+ "bytes 1.2.1",
+ "prost",
+]
+
+[[package]]
 name = "quick-error"
 version = "1.2.2"
 source = "git+https://github.com/mesalock-linux/quick-error-sgx#468bf2cce746f34dd3df8c1c5b4a5a6494914d36"
@@ -3110,6 +3261,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rand_chacha"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e6c10a63a0fa32252be49d21e7709d4d4baf8d231c2dbce1eaa8141b9b127d88"
+dependencies = [
+ "ppv-lite86 0.2.16",
+ "rand_core 0.6.3",
+]
+
+[[package]]
 name = "rand_core"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3129,6 +3290,9 @@ name = "rand_core"
 version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d34f1408f55294453790c48b2f1ebbb1c5b4b7563eb1f418bcfcfdbb06ebb4e7"
+dependencies = [
+ "getrandom 0.2.3",
+]
 
 [[package]]
 name = "rand_hc"

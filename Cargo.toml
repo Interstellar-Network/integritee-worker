@@ -63,6 +63,12 @@ members = [
     "sidechain/sidechain-crate",
     "sidechain/state",
     "sidechain/validateer-fetch",
+    # [interstellar]
+    "interstellar-pallets/ocw-common",
+    "interstellar-pallets/pallets/mobile-registry",
+    "interstellar-pallets/pallets/ocw-garble",
+    "interstellar-pallets/pallets/tx-registry",
+    "interstellar-pallets/pallets/tx-validation",
 ]
 
 [patch."https://github.com/apache/teaclave-sgx-sdk.git"]
@@ -100,3 +106,8 @@ sgx_urts = { version = "1.1.5", git = "https://github.com/apache/incubator-teacl
 
 #[patch."https://github.com/integritee-network/http_req"]
 #http_req = {path = '..//http_req' }
+
+# that way we can have useable build(ie fast enough) but with debug support(ie breakpoints)
+# TODO custom profile?
+[profile.release]
+debug = true
