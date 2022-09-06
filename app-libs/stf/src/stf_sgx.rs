@@ -424,10 +424,12 @@ impl Stf {
 	}
 
 	pub fn get_storage_hashes_to_update(call: &TrustedCallSigned) -> Vec<Vec<u8>> {
-		let key_hashes = Vec::new();
+		let mut key_hashes = Vec::new();
 		match call.call {
 			TrustedCall::balance_set_balance(_, _, _, _) => debug!("No storage updates needed..."),
-			TrustedCall::balance_transfer(_, _, _) => debug!("No storage updates needed..."),
+			TrustedCall::balance_transfer(_, _, _) => {
+				key_hashes.push(storage_value_key("Timestamp", "Now"));
+			},
 			TrustedCall::balance_unshield(_, _, _, _) => debug!("No storage updates needed..."),
 			TrustedCall::balance_shield(_, _, _) => debug!("No storage updates needed..."),
 			#[cfg(feature = "evm")]
