@@ -199,7 +199,7 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 
 	#[pallet::config]
-	pub trait Config<I: 'static = ()>: frame_system::Config {
+	pub trait Config<I: 'static = ()>: frame_system::Config + pallet_timestamp::Config {
 		/// The balance of an account.
 		type Balance: Parameter
 			+ Member
@@ -272,7 +272,7 @@ pub mod pallet {
 		/// ---------------------------------
 		/// - Origin account is already in memory, so no DB operations for them.
 		/// # </weight>
-		#[pallet::weight(T::WeightInfo::transfer())]
+		#[pallet::weight(<T as pallet::Config<I>>::WeightInfo::transfer())]
 		pub fn transfer(
 			origin: OriginFor<T>,
 			dest: <T::Lookup as StaticLookup>::Source,
@@ -282,8 +282,7 @@ pub mod pallet {
 			let dest = T::Lookup::lookup(dest)?;
 
 			// [interstellar] ADDED
-			// TODO pallet_timestamp::now()
-			log::info!("timestamp now = ");
+			log::info!("timestamp now = {:?}", <pallet_timestamp::Pallet<T>>::get());
 
 			<Self as Currency<_>>::transfer(
 				&transactor,
@@ -303,8 +302,8 @@ pub mod pallet {
 		///
 		/// The dispatch origin for this call is `root`.
 		#[pallet::weight(
-			T::WeightInfo::set_balance_creating() // Creates a new account.
-				.max(T::WeightInfo::set_balance_killing()) // Kills an existing account.
+			<T as pallet::Config<I>>::WeightInfo::set_balance_creating() // Creates a new account.
+				.max(<T as pallet::Config<I>>::WeightInfo::set_balance_killing()) // Kills an existing account.
 		)]
 		pub fn set_balance(
 			origin: OriginFor<T>,
@@ -355,7 +354,7 @@ pub mod pallet {
 		/// - Same as transfer, but additional read and write because the source account is not
 		///   assumed to be in the overlay.
 		/// # </weight>
-		#[pallet::weight(T::WeightInfo::force_transfer())]
+		#[pallet::weight(<T as pallet::Config<I>>::WeightInfo::force_transfer())]
 		pub fn force_transfer(
 			origin: OriginFor<T>,
 			source: <T::Lookup as StaticLookup>::Source,
@@ -380,7 +379,7 @@ pub mod pallet {
 		/// 99% of the time you want [`transfer`] instead.
 		///
 		/// [`transfer`]: struct.Pallet.html#method.transfer
-		#[pallet::weight(T::WeightInfo::transfer_keep_alive())]
+		#[pallet::weight(<T as pallet::Config<I>>::WeightInfo::transfer_keep_alive())]
 		pub fn transfer_keep_alive(
 			origin: OriginFor<T>,
 			dest: <T::Lookup as StaticLookup>::Source,
@@ -409,7 +408,7 @@ pub mod pallet {
 		///   keep the sender account alive (true). # <weight>
 		/// - O(1). Just like transfer, but reading the user's transferable balance first.
 		///   #</weight>
-		#[pallet::weight(T::WeightInfo::transfer_all())]
+		#[pallet::weight(<T as pallet::Config<I>>::WeightInfo::transfer_all())]
 		pub fn transfer_all(
 			origin: OriginFor<T>,
 			dest: <T::Lookup as StaticLookup>::Source,
@@ -427,7 +426,7 @@ pub mod pallet {
 		/// Unreserve some balance from a user by force.
 		///
 		/// Can only be called by ROOT.
-		#[pallet::weight(T::WeightInfo::force_unreserve())]
+		#[pallet::weight(<T as pallet::Config<I>>::WeightInfo::force_unreserve())]
 		pub fn force_unreserve(
 			origin: OriginFor<T>,
 			who: <T::Lookup as StaticLookup>::Source,

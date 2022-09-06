@@ -4751,6 +4751,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "log 0.4.17",
+ "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",
  "sp-runtime",
