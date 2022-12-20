@@ -4259,7 +4259,7 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 [[package]]
 name = "lib-garble-rs"
 version = "0.1.0"
-source = "git+https://github.com/Interstellar-Network/lib-garble-rs.git?branch=initial#4ce637283ad7d6cf48a016b03768e6d410e11396"
+source = "git+https://github.com/Interstellar-Network/lib-garble-rs.git?branch=initial#a1492b9fad8df3e201f3e20393eaeb856dd3d9b2"
 dependencies = [
  "bytes 1.3.0",
  "fancy-garbling",
@@ -6517,7 +6517,7 @@ version = "0.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b313b91fcdc6719ad41fa2dad2b7e810b03833fae4bf911950e15529a5f04439"
 dependencies = [
- "num 0.4.0",
+ "num 0.2.1",
 ]
 
 [[package]]
@@ -8745,9 +8745,9 @@ version = "1.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
- "cfg-if 1.0.0",
+ "cfg-if 0.1.10",
  "digest 0.10.6",
- "rand 0.8.5",
+ "rand 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "static_assertions",
 ]
 
