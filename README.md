@@ -7,6 +7,20 @@ This is part of [Integritee](https://integritee.network)
 ## Build and Run
 ~~Please see our [Integritee Book](https://docs.integritee.network/4-development/4.4-sdk) to learn how to build and run this.~~
 
+- install SGX SDK
+  - You can find working but (too) specific steps in the [CI](.github/workflows/rust.yml#L170)
+  - Or DIY [official guide](https://download.01.org/intel-sgx/sgx-dcap/1.11/linux/docs/Intel_SGX_SW_Installation_Guide_for_Linux.pdf)
+- setup needed env vars eg `source /opt/intel/sgxsdk/environment` && `export PATH=/opt/intel/bin:$PATH`
+  - NOTE: it MUST match the directory where you installed the SDK
+- compile and run the tests: `make && (cd bin/ && touch spid.txt key.txt && ./integritee-service test --all)` and `cargo test --release`
+  - NOTE: SGX tests MUST be run with a special exe, **NOT** using `cargo test`
+  - IF you get compilation errors like:
+  ```
+    /home/XXX/.cargo/git/checkouts/incubator-teaclave-sgx-sdk-c63c8825343e87f0/d2d339c/sgx_unwind/../sgx_unwind/libunwind/include/pthread_compat.h:39:10: fatal error: sgx_spinlock.h: No such file or directory
+     39 | #include "sgx_spinlock.h"
+  ```
+  It means the SDK is not properly installed and/or the env vars are not properly set.
+
 **WIP** `PATH=/opt/intel/bin:$PATH make && (cd bin && RUST_LOG=warn RUST_BACKTRACE=1 ./integritee-service --clean-reset -P 2090 -p 9990 -r 3490 -w 2091 -h 4545 run --skip-ra --dev)`
 
 **WIP**  `(cd cli/ && ./demo_interstellar.sh -p 9990 -P 2090)`
