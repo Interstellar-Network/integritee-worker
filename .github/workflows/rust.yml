@@ -66,7 +66,7 @@ jobs:
       #     large-packages: true
       #     swap-storage: true
 
-      - uses: Interstellar-Network/gh-actions/prepare@rust-next
+      - uses: Interstellar-Network/gh-actions/prepare@v2
         with:
           ssh_key_input: ${{ secrets.SSH_KEY_MACHINE_USER_INTERSTELLAR_CI }}
           install_cmake_and_ninja: false
@@ -75,7 +75,7 @@ jobs:
 
       ##########################################################################
 
-      - uses: Interstellar-Network/gh-actions/prepare_rust@rust-next
+      - uses: Interstellar-Network/gh-actions/prepare_rust@v2
         with:
           skip_action_toolchain: "true"
 
@@ -204,7 +204,7 @@ jobs:
       ##########################################################################
 
       # TODO? do we need to "cd enclave/"[we can probably consider enclave/ as internal implementation details?]
-      - uses: Interstellar-Network/gh-actions/rust-lint@rust-next
+      - uses: Interstellar-Network/gh-actions/rust-lint@v2
         with:
           # - clippy: pass --release b/c make always compile in release; so might as well avoid recompiling
           #   from scratch just for the linters.
