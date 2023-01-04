@@ -195,6 +195,30 @@ jobs:
 
       # TODO? --features sidechain (for cargo test and/or rust-lint@rust-next action?)
 
+      # cf https://doc.rust-lang.org/cargo/reference/config.html#netgit-fetch-with-cli
+      # Needed else:
+      #       error: failed to get `lib-garble-rs` as a dependency of package `pallet-ocw-garble v4.0.0-dev (/home/runner/work/integritee-worker/integritee-worker/interstellar-pallets/pallets/ocw-garble)`
+      #   Caused by:
+      #   failed to load source for dependency `lib-garble-rs`
+      #   Caused by:
+      #   Unable to update https://github.com/Interstellar-Network/lib-garble-rs.git?branch=initial#7b217e04
+      #   Caused by:
+      #   failed to update submodule `deps/protos`
+      #   Caused by:
+      #   failed to fetch submodule `deps/protos` from git@github.com:Interstellar-Network/protos.git
+      #   Caused by:
+      #   failed to authenticate when downloading repository
+      #   * attempted ssh-agent authentication, but no usernames succeeded: `git`
+      #   if the git CLI succeeds then `net.git-fetch-with-cli` may help here
+      #   https://doc.rust-lang.org/cargo/reference/config.html#netgit-fetch-with-cli
+      #   Caused by:
+      #   error authenticating: no auth sock variable; class=Ssh (23)
+      #   make: *** [Makefile:174: bin/app] Error 101
+      #
+      - name: Force cargo net.git-fetch-with-cli
+        run: |
+          echo "CARGO_NET_GIT_FETCH_WITH_CLI=true" >> $GITHUB_ENV
+
       - name: Make and Test
         run: |
           make
