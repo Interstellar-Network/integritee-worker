@@ -215,9 +215,10 @@ jobs:
       #   error authenticating: no auth sock variable; class=Ssh (23)
       #   make: *** [Makefile:174: bin/app] Error 101
       #
-      - name: Force cargo net.git-fetch-with-cli
-        run: |
-          echo "CARGO_NET_GIT_FETCH_WITH_CLI=true" >> $GITHUB_ENV
+      # TODO TOREMOVE?
+      # - name: Force cargo net.git-fetch-with-cli
+      #   run: |
+      #     echo "CARGO_NET_GIT_FETCH_WITH_CLI=true" >> $GITHUB_ENV
 
       - name: Make and Test
         run: |
