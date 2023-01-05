@@ -27,6 +27,13 @@ This is part of [Integritee](https://integritee.network)
 
 T  o start multiple worker and a node with one simple command: Check out [this README](local-setup/README.md).
 
+### SGX(enclave) compilation errors
+
+If the root crate compiles but `enclave-runtime` does not with some std related error:
+CHECK with: `cd enclave-runtime/` && `cargo no-std-check --profile=release --manifest-path Cargo.toml`
+
+If this command return a problematic library: CHECK with e.g.: `cargo tree --invert thiserror`
+
 ## Docker
 See [docker/README.md](docker/README.md).
 

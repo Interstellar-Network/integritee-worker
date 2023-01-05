@@ -320,7 +320,7 @@ dependencies = [
 [[package]]
 name = "base_conversion"
 version = "0.4.0"
-source = "git+https://github.com/Interstellar-Network/swanky.git?branch=interstellar-initial#87bdaa002c55f21153f4e9b75c33adcc2c182a23"
+source = "git+https://github.com/Interstellar-Network/swanky.git?branch=interstellar-initial#9b33dbe434e3bfd93fbaafbe58da1f6d55fb6b3c"
 dependencies = [
  "cc",
 ]
@@ -804,6 +804,12 @@ checksum = "2850f2f5a82cbf437dd5af4d49848fbdfc27c157c3d010345776f952765261c5"
 dependencies = [
  "os_str_bytes",
 ]
+
+[[package]]
+name = "cobs"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "67ba02a97a2bd10f4b59b25c7973101c79642302776489e030cd13cdab09ed15"
 
 [[package]]
 name = "color_quant"
@@ -1443,13 +1449,15 @@ checksum = "e88a8acf291dafb59c2d96e8f59828f3838bb1a70398823ade51a84de6a6deed"
 [[package]]
 name = "fancy-garbling"
 version = "0.4.0"
-source = "git+https://github.com/Interstellar-Network/swanky.git?branch=interstellar-initial#87bdaa002c55f21153f4e9b75c33adcc2c182a23"
+source = "git+https://github.com/Interstellar-Network/swanky.git?branch=interstellar-initial#9b33dbe434e3bfd93fbaafbe58da1f6d55fb6b3c"
 dependencies = [
  "base_conversion",
  "itertools",
  "ocelot",
  "rand 0.8.5",
  "scuttlebutt",
+ "serde 1.0.144",
+ "serde_json 1.0.85",
  "sgx_tstd",
 ]
 
@@ -3387,7 +3395,7 @@ dependencies = [
  "environmental 1.1.3",
  "log 0.4.17",
  "parity-scale-codec",
- "postcard",
+ "postcard 0.7.3",
  "serde 1.0.144",
  "sgx_tstd",
  "sgx_types",
@@ -4132,7 +4140,7 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 [[package]]
 name = "lib-garble-rs"
 version = "0.1.0"
-source = "git+https://github.com/Interstellar-Network/lib-garble-rs.git?branch=initial#8f5bcd97ee3b3303e3c4949c6c376c12af7d64ed"
+source = "git+https://github.com/Interstellar-Network/lib-garble-rs.git?branch=initial#cddb3f0073d894545607c5007e2f019cb84e2689"
 dependencies = [
  "bytes 1.2.1",
  "fancy-garbling",
@@ -4140,6 +4148,7 @@ dependencies = [
  "http_req 0.9.0",
  "image",
  "imageproc",
+ "postcard 1.0.2",
  "prost 0.11.3",
  "rusttype",
  "serde 1.0.144",
@@ -4930,7 +4939,7 @@ dependencies = [
 [[package]]
 name = "ocelot"
 version = "0.4.0"
-source = "git+https://github.com/Interstellar-Network/swanky.git?branch=interstellar-initial#87bdaa002c55f21153f4e9b75c33adcc2c182a23"
+source = "git+https://github.com/Interstellar-Network/swanky.git?branch=interstellar-initial#9b33dbe434e3bfd93fbaafbe58da1f6d55fb6b3c"
 dependencies = [
  "libc",
  "rand 0.8.5",
@@ -5776,6 +5785,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a25c0b0ae06fcffe600ad392aabfa535696c8973f2253d9ac83171924c58a858"
 dependencies = [
  "postcard-cobs",
+ "serde 1.0.144",
+]
+
+[[package]]
+name = "postcard"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1c2b180dc0bade59f03fd005cb967d3f1e5f69b13922dad0cd6e047cb8af2363"
+dependencies = [
+ "cobs",
  "serde 1.0.144",
 ]
 
@@ -6627,13 +6646,14 @@ dependencies = [
 [[package]]
 name = "scuttlebutt"
 version = "0.4.0"
-source = "git+https://github.com/Interstellar-Network/swanky.git?branch=interstellar-initial#87bdaa002c55f21153f4e9b75c33adcc2c182a23"
+source = "git+https://github.com/Interstellar-Network/swanky.git?branch=interstellar-initial#9b33dbe434e3bfd93fbaafbe58da1f6d55fb6b3c"
 dependencies = [
  "aes 0.8.2",
  "auto_ops",
  "rand 0.8.5",
  "rand_chacha 0.3.1",
  "rand_core 0.6.4",
+ "serde 1.0.144",
  "sgx_tstd",
 ]
 
