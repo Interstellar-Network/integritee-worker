@@ -304,7 +304,7 @@ impl pallet_parentchain::Config for Runtime {
 // For pallet-ocw
 impl pallet_ocw_garble::Config for Runtime {
 	type AuthorityId = pallet_ocw_garble::crypto::TestAuthId;
-	type Call = Call;
+	type RuntimeCall = Call;
 	type Event = Event;
 }
 
@@ -317,7 +317,7 @@ parameter_types! {
 
 impl pallet_ocw_circuits::Config for Runtime {
 	type AuthorityId = pallet_ocw_circuits::crypto::TestAuthId;
-	type Call = Call;
+	type RuntimeCall = Call;
 	type Event = Event;
 	// TODO interstellar
 	// type GracePeriod = GracePeriod;

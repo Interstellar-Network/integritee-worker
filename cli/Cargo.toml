@@ -49,10 +49,10 @@ itp-types = { path = "../core-primitives/types" }
 itp-utils = { path = "../core-primitives/utils" }
 
 # [interstellar]
-pallet-mobile-registry = { default-features = false, path = "../interstellar-pallets/pallets/mobile-registry" }
-pallet-ocw-circuits = { default-features = false, path = "../interstellar-pallets/pallets/ocw-circuits" }
-pallet-ocw-garble = { default-features = false, path = "../interstellar-pallets/pallets/ocw-garble" }
-pallet-tx-validation = { default-features = false, path = "../interstellar-pallets/pallets/tx-validation" }
+pallet-mobile-registry = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "interstellar-M5" }
+pallet-ocw-circuits = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "interstellar-M5" }
+pallet-ocw-garble = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "interstellar-M5" }
+pallet-tx-validation = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "interstellar-M5" }
 
 [features]
 default = []

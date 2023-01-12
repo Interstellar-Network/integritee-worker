@@ -63,12 +63,6 @@ members = [
     "sidechain/sidechain-crate",
     "sidechain/state",
     "sidechain/validateer-fetch",
-    # [interstellar]
-    "interstellar-pallets/ocw-common",
-    "interstellar-pallets/pallets/mobile-registry",
-    "interstellar-pallets/pallets/ocw-garble",
-    "interstellar-pallets/pallets/tx-registry",
-    "interstellar-pallets/pallets/tx-validation",
 ]
 
 [patch."https://github.com/apache/teaclave-sgx-sdk.git"]
@@ -114,6 +108,14 @@ sgx_urts = { version = "1.1.5", git = "https://github.com/apache/incubator-teacl
 # [patch."https://github.com/Interstellar-Network/lib-garble-rs.git"]
 # lib-garble-rs = { path = "../lib-garble-rs/lib-garble-rs/" }
 # ipfs-client-http-req = { path = "../lib-garble-rs/ipfs-client-http-req/" }
+
+# [patch."https://github.com/Interstellar-Network/pallets.git"]
+# ocw-common = { path = "../pallets/ocw-common/" }
+# pallet-mobile-registry = { path = "../pallets/pallets/mobile-registry/" }
+# pallet-ocw-circuits = { path = "../pallets/pallets/ocw-circuits/" }
+# pallet-ocw-garble = { path = "../pallets/pallets/ocw-garble/" }
+# pallet-tx-registry = { path = "../pallets/pallets/tx-registry/" }
+# pallet-tx-validation = { path = "../pallets/pallets/tx-validation/" }
 ################################################################################
 
 # that way we can have useable build(ie fast enough) but with debug support(ie breakpoints)

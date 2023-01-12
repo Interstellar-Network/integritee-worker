@@ -47,11 +47,11 @@ pallet-parentchain = { default-features = false, git = "https://github.com/integ
 pallet-evm = { default-features = false, optional = true, git = "https://github.com/integritee-network/frontier.git", branch = "polkadot-v0.9.27" }
 
 # [interstellar]
-pallet-mobile-registry = { default-features = false, path = "../../interstellar-pallets/pallets/mobile-registry" }
-pallet-ocw-circuits = { default-features = false, path = "../../interstellar-pallets/pallets/ocw-circuits" }
-pallet-ocw-garble = { default-features = false, path = "../../interstellar-pallets/pallets/ocw-garble" }
-pallet-tx-validation = { default-features = false, path = "../../interstellar-pallets/pallets/tx-validation" }
-pallet-tx-registry = { default-features = false, path = "../../interstellar-pallets/pallets/tx-registry" }
+pallet-mobile-registry = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "interstellar-M5" }
+pallet-ocw-circuits = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "interstellar-M5" }
+pallet-ocw-garble = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "interstellar-M5" }
+pallet-tx-validation = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "interstellar-M5" }
+pallet-tx-registry = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "interstellar-M5" }
 
 [features]
 default = ["std"]
