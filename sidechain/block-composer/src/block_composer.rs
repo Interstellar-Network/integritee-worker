@@ -18,15 +18,16 @@
 use crate::error::{Error, Result};
 use codec::Encode;
 use ita_stf::StatePayload;
+use itp_settings::worker::BLOCK_NUMBER_FINALIZATION_DIFF;
 use itp_sgx_crypto::{key_repository::AccessKey, StateCrypto};
-use itp_sgx_externalities::SgxExternalitiesTrait;
-use itp_time_utils::now_as_u64;
+use itp_sgx_externalities::{SgxExternalitiesTrait, StateHash};
+use itp_time_utils::now_as_millis;
 use itp_types::{ShardIdentifier, H256};
 use its_primitives::traits::{
 	Block as SidechainBlockTrait, BlockData, Header as HeaderTrait, SignBlock,
 	SignedBlock as SignedSidechainBlockTrait,
 };
-use its_state::{LastBlockExt, SidechainDB, SidechainState, SidechainSystemExt, StateHash};
+use its_state::{LastBlockExt, SidechainState, SidechainSystemExt};
 use log::*;
 use sp_core::Pair;
 use sp_runtime::{
@@ -46,7 +47,7 @@ pub trait ComposeBlock<Externalities, ParentchainBlock: ParentchainBlockTrait> {
 		top_call_hashes: Vec<H256>,
 		shard: ShardIdentifier,
 		state_hash_apriori: H256,
-		aposteriori_state: Externalities,
+		aposteriori_state: &Externalities,
 	) -> Result<Self::SignedSidechainBlock>;
 }
 
@@ -92,7 +93,14 @@ where
 	<<SignedSidechainBlock as SignedSidechainBlockTrait>::Block as SidechainBlockTrait>::HeaderType:
 		HeaderTrait<ShardIdentifier = H256>,
 	SignedSidechainBlock::Signature: From<Signer::Signature>,
-	Externalities: SgxExternalitiesTrait + SidechainState + SidechainSystemExt + StateHash + Encode,
+	Externalities: SgxExternalitiesTrait
+		+ SidechainState
+		+ SidechainSystemExt
+		+ StateHash
+		+ LastBlockExt<SignedSidechainBlock::Block>
+		+ Encode,
+	<Externalities as SgxExternalitiesTrait>::SgxExternalitiesType: Encode,
+	<Externalities as SgxExternalitiesTrait>::SgxExternalitiesDiffType: Encode,
 	Signer: Pair<Public = sp_core::ed25519::Public>,
 	Signer::Public: Encode,
 	StateKeyRepository: AccessKey,
@@ -106,28 +114,32 @@ where
 		top_call_hashes: Vec<H256>,
 		shard: ShardIdentifier,
 		state_hash_apriori: H256,
-		aposteriori_state: Externalities,
+		aposteriori_state: &Externalities,
 	) -> Result<Self::SignedSidechainBlock> {
 		let author_public = self.signer.public();
 
-		let db = SidechainDB::<SignedSidechainBlock::Block, Externalities>::new(aposteriori_state);
-		let state_hash_new = db.state_hash();
+		let state_hash_new = aposteriori_state.hash();
 
-		let (block_number, parent_hash) = match db.get_last_block() {
-			Some(block) => (block.header().block_number() + 1, block.hash()),
-			None => {
-				info!("Seems to be first sidechain block.");
-				(1, Default::default())
-			},
-		};
+		let (block_number, parent_hash, next_finalization_block_number) =
+			match aposteriori_state.get_last_block() {
+				Some(block) => (
+					block.header().block_number() + 1,
+					block.hash(),
+					block.header().next_finalization_block_number(),
+				),
+				None => {
+					info!("Seems to be first sidechain block.");
+					(1, Default::default(), 1)
+				},
+			};
 
-		if block_number != db.get_block_number().unwrap_or(0) {
+		if block_number != aposteriori_state.get_block_number().unwrap_or(0) {
 			return Err(Error::Other("[Sidechain] BlockNumber is not LastBlock's Number + 1".into()))
 		}
 
 		// create encrypted payload
 		let mut payload: Vec<u8> =
-			StatePayload::new(state_hash_apriori, state_hash_new, db.ext().state_diff().clone())
+			StatePayload::new(state_hash_apriori, state_hash_new, aposteriori_state.state_diff())
 				.encode();
 
 		let state_key = self
@@ -144,14 +156,22 @@ where
 			latest_parentchain_header.hash(),
 			top_call_hashes,
 			payload,
-			now_as_u64(),
+			now_as_millis(),
 		);
+
+		let mut finalization_candidate = next_finalization_block_number;
+		if block_number == 1 {
+			finalization_candidate = 1;
+		} else if block_number > finalization_candidate {
+			finalization_candidate += BLOCK_NUMBER_FINALIZATION_DIFF;
+		}
 
 		let header = HeaderTypeOf::<SignedSidechainBlock>::new(
 			block_number,
 			parent_hash,
 			shard,
 			block_data.hash(),
+			finalization_candidate,
 		);
 
 		let block = SignedSidechainBlock::Block::new(header.clone(), block_data);

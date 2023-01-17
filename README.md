@@ -33,6 +33,9 @@ If the root crate compiles but `enclave-runtime` does not with some std related 
 CHECK with: `cd enclave-runtime/` && `cargo no-std-check --profile=release --manifest-path Cargo.toml`
 
 If this command return a problematic library: CHECK with e.g.: `cargo tree --invert thiserror`
+Please see our [Integritee Book](https://docs.integritee.network/4-development/4.4-sdk) to learn how to build and run this.
+
+To start multiple worker and a node with one simple command: Check out [this README](local-setup/README.md).
 
 ## Docker
 See [docker/README.md](docker/README.md).

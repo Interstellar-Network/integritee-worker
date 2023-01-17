@@ -21,20 +21,21 @@ use crate::{
 };
 use base58::{FromBase58, ToBase58};
 use codec::{Decode, Encode};
-use ita_stf::{AccountId, KeyPair, ShardIdentifier, TrustedGetter, TrustedOperation};
+use ita_stf::{TrustedGetter, TrustedOperation};
+use itp_stf_primitives::types::{AccountId, KeyPair, ShardIdentifier};
 use log::*;
 use my_node_runtime::Balance;
 use sp_application_crypto::sr25519;
 use sp_core::{crypto::Ss58Codec, sr25519 as sr25519_core, Pair};
 use sp_runtime::traits::IdentifyAccount;
-use std::path::PathBuf;
+use std::{boxed::Box, path::PathBuf};
 use substrate_client_keystore::LocalKeystore;
 
 #[macro_export]
 macro_rules! get_layer_two_nonce {
 	($signer_pair:ident, $cli: ident, $trusted_args:ident ) => {{
 		let top: TrustedOperation = TrustedGetter::nonce($signer_pair.public().into())
-			.sign(&KeyPair::Sr25519($signer_pair.clone()))
+			.sign(&KeyPair::Sr25519(Box::new($signer_pair.clone())))
 			.into();
 		let res = perform_trusted_operation($cli, $trusted_args, &top);
 		let nonce: Index = if let Some(n) = res {
@@ -57,21 +58,22 @@ pub(crate) fn get_balance(cli: &Cli, trusted_args: &TrustedArgs, arg_who: &str) 
 	debug!("arg_who = {:?}", arg_who);
 	let who = get_pair_from_str(trusted_args, arg_who);
 	let top: TrustedOperation = TrustedGetter::free_balance(who.public().into())
-		.sign(&KeyPair::Sr25519(who))
+		.sign(&KeyPair::Sr25519(Box::new(who)))
 		.into();
 	let res = perform_trusted_operation(cli, trusted_args, &top);
 	debug!("received result for balance");
-	let bal = if let Some(v) = res {
-		if let Ok(vd) = Balance::decode(&mut v.as_slice()) {
+	decode_balance(res)
+}
+
+pub(crate) fn decode_balance(maybe_encoded_balance: Option<Vec<u8>>) -> Option<Balance> {
+	maybe_encoded_balance.and_then(|encoded_balance| {
+		if let Ok(vd) = Balance::decode(&mut encoded_balance.as_slice()) {
 			Some(vd)
 		} else {
-			info!("could not decode value. maybe hasn't been set? {:x?}", v);
+			warn!("Could not decode balance. maybe hasn't been set? {:x?}", encoded_balance);
 			None
 		}
-	} else {
-		None
-	};
-	bal
+	})
 }
 
 pub(crate) fn get_keystore_path(trusted_args: &TrustedArgs) -> PathBuf {

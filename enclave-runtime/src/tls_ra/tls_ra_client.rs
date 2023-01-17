@@ -19,15 +19,17 @@
 
 use super::{authentication::ServerAuth, Opcode, TcpHeader};
 use crate::{
-	attestation::{create_ra_report_and_signature, DEV_HOSTNAME},
+	attestation::create_ra_report_and_signature,
 	error::{Error as EnclaveError, Result as EnclaveResult},
-	global_components::{
-		GLOBAL_SHIELDING_KEY_REPOSITORY_COMPONENT, GLOBAL_STATE_KEY_REPOSITORY_COMPONENT,
+	initialization::global_components::{
+		EnclaveSealHandler, GLOBAL_SHIELDING_KEY_REPOSITORY_COMPONENT,
+		GLOBAL_STATE_KEY_REPOSITORY_COMPONENT,
 	},
 	ocall::OcallApi,
-	tls_ra::seal_handler::{SealHandler, SealStateAndKeys},
+	tls_ra::seal_handler::SealStateAndKeys,
 	GLOBAL_STATE_HANDLER_COMPONENT,
 };
+use itp_attestation_handler::DEV_HOSTNAME;
 use itp_component_container::ComponentGetter;
 use itp_ocall_api::EnclaveAttestationOCallApi;
 use itp_types::ShardIdentifier;
@@ -78,7 +80,7 @@ where
 
 	/// Send the shard of the state we want to receive to the provisioning server.
 	fn write_shard(&mut self) -> EnclaveResult<()> {
-		self.tls_stream.write(self.shard.as_bytes())?;
+		self.tls_stream.write_all(self.shard.as_bytes())?;
 		Ok(())
 	}
 
@@ -116,7 +118,7 @@ where
 		if read_size == 0 {
 			return Ok(None)
 		}
-		let header = self.read_header(start_byte.to_vec())?;
+		let header = self.read_header(start_byte[0])?;
 		let bytes = self.read_until(header.payload_length as usize)?;
 		match header.opcode {
 			Opcode::ShieldingKey => self.seal_handler.seal_shielding_key(&bytes)?,
@@ -127,13 +129,15 @@ where
 	}
 
 	/// Reads the payload header, indicating the sent payload length and type.
-	fn read_header(&mut self, start_bytes: Vec<u8>) -> EnclaveResult<TcpHeader> {
+	fn read_header(&mut self, start_byte: u8) -> EnclaveResult<TcpHeader> {
+		debug!("Read first byte: {:?}", start_byte);
 		// The first sent byte indicates the payload type.
-		let opcode: Opcode = start_bytes[0].into();
-		// The 8 bytes following afterwards indicate the payload length.
-		let mut length_buffer = [0u8; 8];
-		self.tls_stream.read(&mut length_buffer)?;
-		let payload_length = u64::from_be_bytes(length_buffer);
+		let opcode: Opcode = start_byte.into();
+		debug!("Read header opcode: {:?}", opcode);
+		// The following bytes contain the payload length, which is a u64.
+		let mut payload_length_buffer = [0u8; std::mem::size_of::<u64>()];
+		self.tls_stream.read_exact(&mut payload_length_buffer)?;
+		let payload_length = u64::from_be_bytes(payload_length_buffer);
 		debug!("Payload length of {:?}: {}", opcode, payload_length);
 
 		Ok(TcpHeader::new(opcode, payload_length))
@@ -142,7 +146,7 @@ where
 	/// Read all bytes into a buffer of given length.
 	fn read_until(&mut self, length: usize) -> EnclaveResult<Vec<u8>> {
 		let mut bytes = vec![0u8; length];
-		self.tls_stream.read(&mut bytes)?;
+		self.tls_stream.read_exact(&mut bytes)?;
 		Ok(bytes)
 	}
 }
@@ -183,7 +187,7 @@ pub unsafe extern "C" fn request_state_provisioning(
 	};
 
 	let seal_handler =
-		SealHandler::new(state_handler, state_key_repository, shielding_key_repository);
+		EnclaveSealHandler::new(state_handler, state_key_repository, shielding_key_repository);
 
 	if let Err(e) =
 		request_state_provisioning_internal(socket_fd, sign_type, shard, skip_ra, seal_handler)
@@ -221,7 +225,7 @@ fn tls_client_config<A: EnclaveAttestationOCallApi + 'static>(
 	ocall_api: A,
 	skip_ra: bool,
 ) -> EnclaveResult<ClientConfig> {
-	let (key_der, cert_der) = create_ra_report_and_signature(sign_type, &ocall_api, skip_ra)?;
+	let (key_der, cert_der) = create_ra_report_and_signature(sign_type, skip_ra)?;
 
 	let mut cfg = rustls::ClientConfig::new();
 	let certs = vec![rustls::Certificate(cert_der)];

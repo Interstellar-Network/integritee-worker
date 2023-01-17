@@ -178,9 +178,8 @@ pub mod storage {
 	}
 
 	/// Clear the storage of each key-value pair where the key starts with the given `prefix`.
-	#[allow(unused)]
-	fn clear_prefix_version_1(prefix: &[u8]) {
-		warn!("storage::clear_prefix() unimplemented");
+	pub fn clear_prefix_version_1(prefix: &[u8]) {
+		clear_prefix(prefix, None);
 	}
 
 	/// Clear the storage of each key-value pair where the key starts with the given `prefix`.
@@ -208,9 +207,10 @@ pub mod storage {
 	/// not make much sense because it is not cumulative when called inside the same block.
 	/// Use this function to distribute the deletion of a single child trie across multiple
 	/// blocks.
-	pub fn clear_prefix(prefix: &[u8], limit: Option<u32>) -> KillStorageResult {
-		warn!("storage::clear_prefix() unimplemented");
-		KillStorageResult::AllRemoved(0)
+	pub fn clear_prefix(prefix: &[u8], maybe_limit: Option<u32>) -> KillStorageResult {
+		let number_of_removed_values =
+			with_externalities(|ext| ext.clear_prefix(prefix, maybe_limit)).unwrap_or_default();
+		KillStorageResult::AllRemoved(number_of_removed_values)
 	}
 
 	/// Append the encoded `value` to the storage item at `key`.
@@ -222,12 +222,7 @@ pub mod storage {
 	/// If the storage item does not support [`EncodeAppend`](codec::EncodeAppend) or
 	/// something else fails at appending, the storage item will be set to `[value]`.
 	pub fn append(key: &[u8], value: Vec<u8>) {
-		warn!("storage::append() unimplemented ('{}', {:x?})", encode_hex(key), value);
-		// self.storage_append(key.to_vec(), value);
-		// debug!("set_storage('{}', {:x?})", encode_hex(key), value);
-		// with_externalities(|ext| ext.storage_append(key.to_vec(), value)).expect(
-		// "`storage_append` cannot be called outside of an Externalities-provided environment.",
-		// );
+		with_externalities(|ext| ext.append(key.to_vec(), value.to_vec()));
 	}
 
 	/// "Commit" all existing operations and compute the resulting storage root.
@@ -257,8 +252,9 @@ pub mod storage {
 
 	/// Get the next key in storage after the given one in lexicographic order.
 	pub fn next_key(key: &[u8]) -> Option<Vec<u8>> {
-		warn!("storage::next_key unimplemented");
-		Some([0u8; 32].to_vec())
+		debug!("next_key('{}')", encode_hex(key));
+		with_externalities(|ext| ext.next_storage_key(key))
+			.expect("`next_key` cannot be called outside of an Externalities-provided environment.")
 	}
 
 	/// Start a new nested transaction.
@@ -656,10 +652,8 @@ pub mod crypto {
 	) -> Result<[u8; 64], EcdsaVerifyError> {
 		let rs = libsecp256k1::Signature::parse_standard_slice(&sig[0..64])
 			.map_err(|_| EcdsaVerifyError::BadRS)?;
-		let v = libsecp256k1::RecoveryId::parse(
-			if sig[64] > 26 { sig[64] - 27 } else { sig[64] } as u8
-		)
-		.map_err(|_| EcdsaVerifyError::BadV)?;
+		let v = libsecp256k1::RecoveryId::parse(if sig[64] > 26 { sig[64] - 27 } else { sig[64] })
+			.map_err(|_| EcdsaVerifyError::BadV)?;
 		let pubkey = libsecp256k1::recover(&libsecp256k1::Message::parse(msg), &rs, &v)
 			.map_err(|_| EcdsaVerifyError::BadSignature)?;
 		let mut res = [0u8; 64];
@@ -964,5 +958,48 @@ mod tests {
 	)]
 	fn storage_set_without_externalities_panics() {
 		storage::set(b"hello", b"world");
+	}
+
+	#[test]
+	fn storage_set_and_next_key_works() {
+		let mut ext = SgxExternalities::default();
+
+		ext.execute_with(|| {
+			storage::set(b"doe".to_vec().as_slice(), b"reindeer".to_vec().as_slice());
+			storage::set(b"dog".to_vec().as_slice(), b"puppy".to_vec().as_slice());
+			storage::set(b"dogglesworth".to_vec().as_slice(), b"cat".to_vec().as_slice());
+		});
+
+		ext.execute_with(|| {
+			assert_eq!(storage::next_key(&[]), Some(b"doe".to_vec()));
+			assert_eq!(storage::next_key(b"d".to_vec().as_slice()), Some(b"doe".to_vec()));
+			assert_eq!(
+				storage::next_key(b"dog".to_vec().as_slice()),
+				Some(b"dogglesworth".to_vec())
+			);
+			assert_eq!(
+				storage::next_key(b"doga".to_vec().as_slice()),
+				Some(b"dogglesworth".to_vec())
+			);
+			assert_eq!(storage::next_key(b"dogglesworth".to_vec().as_slice()), None);
+			assert_eq!(storage::next_key(b"e".to_vec().as_slice()), None);
+		});
+	}
+
+	#[test]
+	fn storage_next_key_in_empty_externatility_works() {
+		let mut ext = SgxExternalities::default();
+		ext.execute_with(|| {
+			assert_eq!(storage::next_key(&[]), None);
+			assert_eq!(storage::next_key(b"dog".to_vec().as_slice()), None);
+		});
+	}
+
+	#[test]
+	#[should_panic(
+		expected = "`next_key` cannot be called outside of an Externalities-provided environment."
+	)]
+	fn storage_next_key_without_externalities_panics() {
+		storage::next_key(b"d".to_vec().as_slice());
 	}
 }

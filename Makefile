@@ -139,7 +139,7 @@ RustEnclave_Link_Libs := -L$(CUSTOM_LIBRARY_PATH) -lenclave
 RustEnclave_Compile_Flags := $(SGX_COMMON_CFLAGS) $(ENCLAVE_CFLAGS) $(RustEnclave_Include_Paths)
 RustEnclave_Link_Flags := -Wl,--no-undefined -nostdlib -nodefaultlibs -nostartfiles -L$(SGX_LIBRARY_PATH) \
 	-Wl,--whole-archive -l$(Trts_Library_Name) -Wl,--no-whole-archive \
-	-Wl,--start-group -lsgx_tstdc -lsgx_tcxx -l$(Crypto_Library_Name) -l$(Service_Library_Name) -l$(ProtectedFs_Library_Name) $(RustEnclave_Link_Libs) -Wl,--end-group \
+	-Wl,--start-group -lsgx_tstdc -lsgx_tcxx -lsgx_dcap_tvl -l$(Crypto_Library_Name) -l$(Service_Library_Name) -l$(ProtectedFs_Library_Name) $(RustEnclave_Link_Libs) -Wl,--end-group \
 	-Wl,--version-script=enclave-runtime/Enclave.lds \
 	$(ENCLAVE_LDFLAGS)
 
@@ -226,9 +226,9 @@ clean:
 
 .PHONY: pin-sgx
 pin-sgx:
-	@echo "Pin sgx dependencies to d2d339cbb005f676bb700059bd51dc689c025f6b"
-	@cd enclave-runtime && cargo update -p sgx_tstd --precise d2d339cbb005f676bb700059bd51dc689c025f6b
-	@cargo update -p sgx_tstd --precise d2d339cbb005f676bb700059bd51dc689c025f6b
+	@echo "Pin sgx dependencies to 9c1bbd52f188f600a212b57c916124245da1b7fd"
+	@cd enclave-runtime && cargo update -p sgx_tstd --precise 9c1bbd52f188f600a212b57c916124245da1b7fd
+	@cargo update -p sgx_tstd --precise 9c1bbd52f188f600a212b57c916124245da1b7fd
 
 mrenclave:
 	@$(SGX_ENCLAVE_SIGNER) dump -enclave ./bin/enclave.signed.so -dumpfile df.out && ./extract_identity < df.out && rm df.out

@@ -6,14 +6,14 @@ edition = "2021"
 
 
 [dependencies]
-log = { version = "0.4", default-features = false }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
 derive_more = "0.99.16"
 lazy_static = { version = "1.1.0", features = ["spin_no_std"] }
+log = { version = "0.4", default-features = false }
 
 # local deps
 itp-types = { path = "../../../core-primitives/types", default-features = false }
-its-block-verification = { path = "../../block-verification", default-features = false}
+its-block-verification = { path = "../../block-verification", default-features = false }
 its-primitives = { path = "../../primitives", default-features = false }
 
 # only for slot-stream
@@ -24,8 +24,8 @@ futures-timer = { version = "3.0", optional = true }
 sgx_tstd = { branch = "master", git = "https://github.com/apache/teaclave-sgx-sdk.git", optional = true, features = ["untrusted_time"] }
 
 # substrate deps
-sp-consensus-slots = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.27" }
-sp-runtime = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.27" }
+sp-consensus-slots = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.36" }
+sp-runtime = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.36" }
 
 # local deps
 itp-settings = { path = "../../../core-primitives/settings" }
@@ -36,8 +36,8 @@ its-consensus-common = { path = "../common", default-features = false }
 [dev-dependencies]
 itc-parentchain-test = { path = "../../../core/parentchain/test" }
 its-test = { path = "../../test" }
-sp-keyring = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.27" }
-tokio = "*"
+sp-keyring = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.36" }
+tokio = { version = "1.6.1", features = ["full"] }
 
 
 [features]

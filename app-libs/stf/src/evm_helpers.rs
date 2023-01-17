@@ -16,11 +16,11 @@
 */
 use crate::{
 	helpers::{get_storage_double_map, get_storage_map},
-	AccountId, Index, H256,
+	AccountId, Index,
 };
 use itp_storage::StorageHasher;
 use sha3::{Digest, Keccak256};
-use sp_core::H160;
+use sp_core::{H160, H256};
 use std::prelude::v1::*;
 
 pub fn get_evm_account_codes(evm_account: &H160) -> Option<Vec<u8>> {
@@ -49,7 +49,7 @@ pub fn evm_create_address(caller: H160, nonce: Index) -> H160 {
 // FIXME: Once events are available, these addresses should be read from events.
 pub fn evm_create2_address(caller: H160, salt: H256, code_hash: H256) -> H160 {
 	let mut hasher = Keccak256::new();
-	hasher.update(&[0xff]);
+	hasher.update([0xff]);
 	hasher.update(&caller[..]);
 	hasher.update(&salt[..]);
 	hasher.update(&code_hash[..]);
@@ -57,7 +57,7 @@ pub fn evm_create2_address(caller: H160, salt: H256, code_hash: H256) -> H160 {
 }
 
 pub fn create_code_hash(code: &[u8]) -> H256 {
-	H256::from_slice(Keccak256::digest(&code).as_slice())
+	H256::from_slice(Keccak256::digest(code).as_slice())
 }
 
 pub fn get_evm_account(account: &AccountId) -> H160 {

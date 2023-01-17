@@ -16,6 +16,7 @@
 */
 
 #![cfg_attr(not(feature = "std"), no_std)]
+
 #[cfg(all(feature = "std", feature = "sgx"))]
 compile_error!("feature \"std\" and feature \"sgx\" cannot be enabled at the same time");
 
@@ -34,31 +35,13 @@ mod sgx_reexports {
 }
 
 use codec::{Decode, Encode};
-use itp_sgx_externalities::{SgxExternalitiesDiffType, SgxExternalitiesTrait};
+use itp_sgx_externalities::{SgxExternalitiesDiffType, SgxExternalitiesTrait, StateHash};
 use its_primitives::{
 	traits::Block as SidechainBlockTrait,
 	types::{BlockHash, BlockNumber, Timestamp},
 };
 use sp_core::H256;
-use sp_std::prelude::Vec;
-use std::marker::PhantomData;
-
-/// Sidechain wrapper and interface of the STF state.
-///
-/// TODO: In the course of refactoring the STF (#269), verify if this struct is even needed.
-/// It might be that we could implement everything directly on `[SgxExternalities]`.
-#[derive(Clone, Debug, Default, Encode, Decode, PartialEq, Eq)]
-pub struct SidechainDB<Block, E> {
-	/// Externalities
-	pub ext: E,
-	_phantom: PhantomData<Block>,
-}
-
-impl<Block, E> SidechainDB<Block, E> {
-	pub fn new(externalities: E) -> Self {
-		Self { ext: externalities, _phantom: Default::default() }
-	}
-}
+use sp_io::KillStorageResult;
 
 /// Contains the necessary data to update the `SidechainDB` when importing a `SidechainBlock`.
 #[derive(PartialEq, Eq, Clone, Debug, Encode, Decode)]
@@ -95,43 +78,42 @@ impl StateUpdate {
 		}
 	}
 }
-
-/// state hash abstraction
-pub trait StateHash {
-	fn hash(&self) -> H256;
-}
-
 /// Abstraction around the sidechain state.
 pub trait SidechainState: Clone {
 	type Externalities: SgxExternalitiesTrait + StateHash;
 
 	type StateUpdate: Encode + Decode;
 
-	type Hash;
-
-	/// get the hash of the state
-	fn state_hash(&self) -> Self::Hash;
-
-	/// get a reference to the underlying externalities of the state
-	fn ext(&self) -> &Self::Externalities;
-
-	/// get a mutable reference to the underlying externalities of the state
-	fn ext_mut(&mut self) -> &mut Self::Externalities;
-
-	/// apply the state update to the state
+	/// Apply the state update to the state.
+	///
+	/// Does not guarantee state consistency in case of a failure.
+	/// Caller is responsible for discarding corrupt/inconsistent state.
 	fn apply_state_update(&mut self, state_payload: &Self::StateUpdate) -> Result<(), Error>;
 
-	/// get a storage value by its full name
+	/// Get a storage value by its full name.
 	fn get_with_name<V: Decode>(&self, module_prefix: &str, storage_prefix: &str) -> Option<V>;
 
-	/// set a storage value by its full name
+	/// Set a storage value by its full name.
 	fn set_with_name<V: Encode>(&mut self, module_prefix: &str, storage_prefix: &str, value: V);
 
-	/// get a storage value by its storage hash
-	fn get(&self, key: &[u8]) -> Option<Vec<u8>>;
+	/// Clear a storage value by its full name.
+	fn clear_with_name(&mut self, module_prefix: &str, storage_prefix: &str);
 
-	/// set a storage value by its storage hash
+	/// Clear all storage values for the given prefix.
+	fn clear_prefix_with_name(
+		&mut self,
+		module_prefix: &str,
+		storage_prefix: &str,
+	) -> KillStorageResult;
+
+	/// Set a storage value by its storage hash.
 	fn set(&mut self, key: &[u8], value: &[u8]);
+
+	/// Clear a storage value by its storage hash.
+	fn clear(&mut self, key: &[u8]);
+
+	/// Clear a all storage values starting the given prefix.
+	fn clear_sidechain_prefix(&mut self, prefix: &[u8]) -> KillStorageResult;
 }
 
 /// trait to set and get the last sidechain block of the sidechain state
@@ -143,10 +125,8 @@ pub trait LastBlockExt<SidechainBlock: SidechainBlockTrait> {
 	fn set_last_block(&mut self, block: &SidechainBlock);
 }
 
-impl<SidechainBlock: SidechainBlockTrait, E> LastBlockExt<SidechainBlock>
-	for SidechainDB<SidechainBlock, E>
-where
-	SidechainDB<SidechainBlock, E>: SidechainState + SidechainSystemExt,
+impl<SidechainBlock: SidechainBlockTrait, E: SidechainState + SidechainSystemExt>
+	LastBlockExt<SidechainBlock> for E
 {
 	fn get_last_block(&self) -> Option<SidechainBlock> {
 		self.get_with_name("System", "LastBlock")
@@ -158,25 +138,28 @@ where
 	}
 }
 
-/// system extension for the `SidechainDB`
+/// System extension for the `SidechainDB`.
 pub trait SidechainSystemExt {
-	/// get the last block number of the sidechain state
+	/// Get the last block number.
 	fn get_block_number(&self) -> Option<BlockNumber>;
 
-	/// set the last block number of the sidechain state
+	/// Set the last block number.
 	fn set_block_number(&mut self, number: &BlockNumber);
 
-	/// get the last block hash of the sidechain state
+	/// Get the last block hash.
 	fn get_last_block_hash(&self) -> Option<BlockHash>;
 
-	/// set the last block hash of the sidechain state
+	/// Set the last block hash.
 	fn set_last_block_hash(&mut self, hash: &BlockHash);
 
-	/// get the timestamp of the sidechain state
+	/// Get the timestamp of.
 	fn get_timestamp(&self) -> Option<Timestamp>;
 
-	/// set the timestamp of the sidechain state
+	/// Set the timestamp.
 	fn set_timestamp(&mut self, timestamp: &Timestamp);
+
+	/// Resets the events.
+	fn reset_events(&mut self);
 }
 
 impl<T: SidechainState> SidechainSystemExt for T {
@@ -202,5 +185,11 @@ impl<T: SidechainState> SidechainSystemExt for T {
 
 	fn set_timestamp(&mut self, timestamp: &Timestamp) {
 		self.set_with_name("System", "Timestamp", timestamp)
+	}
+
+	fn reset_events(&mut self) {
+		self.clear_with_name("System", "Events");
+		self.clear_with_name("System", "EventCount");
+		self.clear_prefix_with_name("System", "EventTopics");
 	}
 }

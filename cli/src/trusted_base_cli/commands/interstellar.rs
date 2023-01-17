@@ -20,9 +20,11 @@ use crate::{
 };
 use codec::Decode;
 use core::primitive::str;
-use ita_stf::{Index, KeyPair, TrustedCall, TrustedGetter, TrustedOperation};
+use ita_stf::{Index, TrustedCall, TrustedGetter, TrustedOperation};
+use itp_stf_primitives::types::KeyPair;
 use log::*;
 use sp_core::{crypto::Ss58Codec, Pair};
+use std::boxed::Box;
 
 /// pallet ocw-garble: garble_and_strip_display_circuits_package_signed
 pub(crate) fn ocw_garble_garble_and_strip_display_circuits_package_signed(
@@ -47,7 +49,7 @@ pub(crate) fn ocw_garble_garble_and_strip_display_circuits_package_signed(
 		creator.public().into(),
 		tx_msg.as_bytes().to_vec(),
 	)
-	.sign(&KeyPair::Sr25519(creator), nonce, &mrenclave, &shard)
+	.sign(&KeyPair::Sr25519(Box::new(creator)), nonce, &mrenclave, &shard)
 	.into_trusted_operation(direct);
 
 	let _ = perform_trusted_operation(cli, trusted_args, &top);
@@ -79,7 +81,7 @@ pub(crate) fn tx_validation_check_input(
 		ipfs_cid.to_string(),
 		input_digits.clone(),
 	)
-	.sign(&KeyPair::Sr25519(creator), nonce, &mrenclave, &shard)
+	.sign(&KeyPair::Sr25519(Box::new(creator)), nonce, &mrenclave, &shard)
 	.into_trusted_operation(direct);
 
 	let _ = perform_trusted_operation(cli, trusted_args, &top);
@@ -97,7 +99,7 @@ pub(crate) fn ocw_garble_get_most_recent_circuits_package(
 	let account = get_pair_from_str(trusted_args, arg_account);
 	println!("account ss58 is {}", account.public().to_ss58check());
 	let top: TrustedOperation = TrustedGetter::most_recent_circuits(account.public().into())
-		.sign(&KeyPair::Sr25519(account))
+		.sign(&KeyPair::Sr25519(Box::new(account)))
 		.into();
 
 	let getter_result = perform_trusted_operation(cli, trusted_args, &top);

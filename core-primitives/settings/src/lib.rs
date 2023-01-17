@@ -49,9 +49,6 @@ pub mod files {
 
 	pub const RA_DUMP_CERT_DER_FILE: &str = "ra_dump_cert.der";
 
-	pub const ENCLAVE_CERTIFICATE_FILE_PATH: &str = "cert.pem";
-	pub const ENCLAVE_CERTIFICATE_PRIVATE_KEY_PATH: &str = "private_key.pem";
-
 	// used by worker and enclave
 	pub const SHARDS_PATH: &str = "shards";
 	pub const ENCRYPTED_STATE_FILE: &str = "state.bin";
@@ -68,13 +65,13 @@ pub mod files {
 	pub static RA_API_KEY_FILE: &str = "key.txt";
 
 	pub const SPID_MIN_LENGTH: usize = 32;
-	pub const STATE_SNAPSHOTS_CACHE_SIZE: usize = 120;
+	pub const STATE_SNAPSHOTS_CACHE_SIZE: usize = 4;
 }
 
 /// Settings concerning the worker
 pub mod worker {
 	// the maximum size of any extrinsic that the enclave will ever generate in B
-	pub const EXTRINSIC_MAX_SIZE: usize = 4196;
+	pub const EXTRINSIC_MAX_SIZE: usize = 5500;
 	// the maximum size of the header
 	pub const HEADER_MAX_SIZE: usize = 200;
 	// maximum size of shielding key
@@ -90,6 +87,9 @@ pub mod worker {
 	// Should be set to a value that ensures that the enclave can register itself
 	// and that the worker can start.
 	pub const REGISTERING_FEE_FACTOR_FOR_INIT_FUNDS: u128 = 10;
+	// Should be set to a value that ensures that at least 2 sidechain blocks are finalized per
+	// parentchain block.
+	pub const BLOCK_NUMBER_FINALIZATION_DIFF: u64 = 20;
 }
 
 pub mod sidechain {

@@ -25,8 +25,9 @@ use crate::{
 	validated_pool::{ValidatedOperation, ValidatedPool},
 };
 use core::matches;
-use ita_stf::{ShardIdentifier, TrustedOperation as StfTrustedOperation};
+use ita_stf::TrustedOperation as StfTrustedOperation;
 use itc_direct_rpc_server::SendRpcResponse;
+use itp_stf_primitives::types::ShardIdentifier;
 use itp_types::BlockHash as SidechainBlockHash;
 use jsonrpc_core::futures::{channel::mpsc::Receiver, future, Future};
 use sp_runtime::{
@@ -153,9 +154,7 @@ where
 		let xts = xts.into_iter().map(|xt| (source, xt));
 		let validated_transactions =
 			self.verify(at, xts, CheckBannedBeforeVerify::Yes, shard).await?;
-		Ok(self
-			.validated_pool
-			.submit(validated_transactions.into_iter().map(|(_, tx)| tx), shard))
+		Ok(self.validated_pool.submit(validated_transactions.into_values(), shard))
 	}
 
 	/// Resubmit the given extrinsics to the pool.
@@ -171,9 +170,7 @@ where
 		let xts = xts.into_iter().map(|xt| (source, xt));
 		let validated_transactions =
 			self.verify(at, xts, CheckBannedBeforeVerify::No, shard).await?;
-		Ok(self
-			.validated_pool
-			.submit(validated_transactions.into_iter().map(|(_, tx)| tx), shard))
+		Ok(self.validated_pool.submit(validated_transactions.into_values(), shard))
 	}
 
 	/// Imports one unverified extrinsic to the pool
@@ -362,7 +359,7 @@ where
 			at,
 			known_imported_hashes,
 			pruned_hashes,
-			reverified_transactions.into_iter().map(|(_, xt)| xt).collect(),
+			reverified_transactions.into_values().collect(),
 			shard,
 		)
 	}
@@ -482,6 +479,7 @@ pub mod tests {
 	};
 	use codec::{Decode, Encode};
 	use ita_stf::{Index, TrustedCall, TrustedCallSigned, TrustedOperation};
+	use itp_types::Header;
 	use jsonrpc_core::{futures, futures::executor::block_on};
 	use parity_util_mem::MallocSizeOf;
 	use serde::Serialize;
@@ -528,16 +526,10 @@ pub mod tests {
 	pub type AccountId = <AccountSignature as Verify>::Signer;
 	/// The hashing algorithm used.
 	pub type Hashing = BlakeTwo256;
-	/// The block number type used in this runtime.
-	pub type BlockNumber = u64;
-	/// Index of a transaction.
-	//pub type Index = u64;
 	/// The item of a block digest.
 	pub type DigestItem = sp_runtime::generic::DigestItem;
 	/// The digest of a block.
 	pub type Digest = sp_runtime::generic::Digest;
-	/// A test block's header.
-	pub type Header = sp_runtime::generic::Header<BlockNumber, BlakeTwo256>;
 	/// A test block.
 	pub type Block = sp_runtime::generic::Block<Header, Extrinsic>;
 	/// Test RPC responder
@@ -627,7 +619,7 @@ pub mod tests {
 			at: &BlockId<Self::Block>,
 		) -> Result<Option<SidechainBlockHash>, Self::Error> {
 			Ok(match at {
-				BlockId::Number(num) => Some(from_low_u64_to_be_h256(*num)),
+				BlockId::Number(num) => Some(from_low_u64_to_be_h256((*num).into())),
 				BlockId::Hash(_) => None,
 			})
 		}

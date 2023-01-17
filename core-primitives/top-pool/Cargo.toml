@@ -6,12 +6,13 @@ edition = "2021"
 
 [dependencies]
 # sgx dependencies
-sgx_types = { branch = "master", git = "https://github.com/apache/teaclave-sgx-sdk.git", optional = true }
 sgx_tstd = { branch = "master", git = "https://github.com/apache/teaclave-sgx-sdk.git", optional = true, features = ["net", "thread", "untrusted_time"] }
+sgx_types = { branch = "master", git = "https://github.com/apache/teaclave-sgx-sdk.git", optional = true }
 
 # local dependencies
 ita-stf = { path = "../../app-libs/stf", default-features = false }
 itc-direct-rpc-server = { path = "../../core/direct-rpc-server", default-features = false }
+itp-stf-primitives = { path = "../stf-primitives", default-features = false }
 itp-types = { path = "../types", default-features = false }
 its-primitives = { path = "../../sidechain/primitives", default-features = false }
 
@@ -27,17 +28,17 @@ thiserror = { version = "1.0", optional = true }
 
 # no-std compatible libraries
 byteorder = { version = "1.4.2", default-features = false }
-codec  = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
 derive_more = { version = "0.99.5" }
 log = { version = "0.4", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
-sp-application-crypto = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.27" }
-sp-core = { default-features = false, features = ["full_crypto"], git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.27" }
-sp-runtime = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.27" }
+sp-application-crypto = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.36" }
+sp-core = { default-features = false, features = ["full_crypto"], git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.36" }
+sp-runtime = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.36" }
 
 # dev dependencies (for tests)
 [dev-dependencies]
-parity-util-mem = { version = "0.11.0", default-features = false, features = ["primitive-types"] }
+parity-util-mem = { version = "0.12.0", default-features = false, features = ["primitive-types"] }
 
 [features]
 default = ["std"]

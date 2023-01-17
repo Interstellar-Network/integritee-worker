@@ -17,13 +17,13 @@
 
 ################################################################################
 
-FROM integritee/integritee-dev:0.1.9
+FROM integritee/integritee-dev:0.1.10
 LABEL maintainer="zoltan@integritee.network"
 
 # By default we warp the service
 ARG BINARY_FILE=integritee-service
 
-COPY bin/enclave.signed.so bin/end.rsa bin/end.fullchain /usr/local/bin/
+COPY bin/enclave.signed.so /usr/local/bin/
 COPY bin/${BINARY_FILE} /usr/local/bin/integritee
 
 # [interstellar] This is needed when using docker-compose b/c apparently integritee-service DOES NOT retry in case of timeout/node not yet ready

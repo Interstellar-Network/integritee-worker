@@ -27,7 +27,7 @@ use ita_stf::Getter;
 use itp_stf_state_observer::traits::ObserveState;
 use itp_types::ShardIdentifier;
 use log::*;
-use std::{format, marker::PhantomData, sync::Arc, vec::Vec};
+use std::{format, marker::PhantomData, sync::Arc, time::Instant, vec::Vec};
 
 /// Trait to execute a getter for a specific shard.
 pub trait ExecuteGetter {
@@ -63,11 +63,12 @@ where
 
 		trace!("Successfully decoded trusted getter");
 		if let Getter::trusted(trusted_getter_signed) = getter {
+			let getter_timer_start = Instant::now();
 			let state_result = self.state_observer.observe_state(shard, |state| {
 				StateGetter::get_state(&trusted_getter_signed, state)
 			})??;
 
-			trace!("Successfully executed trusted getter");
+			debug!("Getter executed in {} ms", getter_timer_start.elapsed().as_millis());
 
 			Ok(state_result)
 		} else {
@@ -80,7 +81,8 @@ where
 mod tests {
 	use super::*;
 	use codec::{Decode, Encode};
-	use ita_stf::{AccountId, PublicGetter, TrustedGetter, TrustedGetterSigned};
+	use ita_stf::{PublicGetter, TrustedGetter, TrustedGetterSigned};
+	use itp_stf_primitives::types::AccountId;
 	use itp_stf_state_observer::mock::ObserveStateMock;
 	use sp_core::ed25519::Signature;
 	use sp_runtime::MultiSignature;

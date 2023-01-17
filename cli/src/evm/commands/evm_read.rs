@@ -20,11 +20,12 @@ use crate::{
 	trusted_operation::perform_trusted_operation, Cli,
 };
 use codec::Decode;
-use ita_stf::{KeyPair, TrustedGetter, TrustedOperation};
+use ita_stf::{TrustedGetter, TrustedOperation};
+use itp_stf_primitives::types::KeyPair;
 use itp_types::AccountId;
 use log::*;
 use sp_core::{crypto::Ss58Codec, Pair, H160, H256};
-use std::vec::Vec;
+use std::{boxed::Box, vec::Vec};
 use substrate_api_client::utils::FromHexString;
 
 #[derive(Parser)]
@@ -55,7 +56,7 @@ impl EvmReadCommands {
 
 		let top: TrustedOperation =
 			TrustedGetter::evm_account_storages(sender_acc, execution_address, H256::zero())
-				.sign(&KeyPair::Sr25519(sender))
+				.sign(&KeyPair::Sr25519(Box::new(sender)))
 				.into();
 		let res = perform_trusted_operation(cli, trusted_args, &top);
 

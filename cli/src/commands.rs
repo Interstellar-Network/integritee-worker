@@ -23,7 +23,7 @@ use sp_keyring::AccountKeyring;
 use substrate_api_client::{compose_extrinsic, UncheckedExtrinsicV4, XtStatus};
 
 #[cfg(feature = "teeracle")]
-use crate::exchange_oracle::ExchangeOracleSubCommand;
+use crate::oracle::OracleSubCommand;
 
 #[derive(Subcommand)]
 pub enum Commands {
@@ -39,10 +39,10 @@ pub enum Commands {
 	#[clap(after_help = "stf subcommands depend on the stf crate this has been built against")]
 	Trusted(TrustedArgs),
 
-	/// Subcommands for the exchange oracle.
+	/// Subcommands for the oracle.
 	#[cfg(feature = "teeracle")]
 	#[clap(subcommand)]
-	ExchangeOracle(ExchangeOracleSubCommand),
+	Oracle(OracleSubCommand),
 }
 
 pub fn match_command(cli: &Cli) {
@@ -51,7 +51,7 @@ pub fn match_command(cli: &Cli) {
 		Commands::Base(cmd) => cmd.run(cli),
 		Commands::Trusted(cmd) => cmd.run(cli),
 		#[cfg(feature = "teeracle")]
-		Commands::ExchangeOracle(cmd) => cmd.run(cli),
+		Commands::Oracle(cmd) => cmd.run(cli),
 		// [interstellar][DEMO ONLY]
 		DemoOcwCircuitsSubmitConfigDisplayCircuitsPackage =>
 			demo_pallet_ocw_circuits_submit_config_display_circuits_package_signed(cli),

@@ -24,13 +24,14 @@ use crate::error::Result;
 use beefy_merkle_tree::{merkle_root, Keccak256};
 use codec::{Decode, Encode};
 use futures::executor;
-use ita_stf::{AccountId, TrustedCall, TrustedOperation};
+use ita_stf::{TrustedCall, TrustedOperation};
 use itp_node_api::{
 	api_client::ParentchainUncheckedExtrinsic,
 	metadata::{pallet_teerex::TeerexCallIndexes, provider::AccessNodeMetadata},
 };
 use itp_sgx_crypto::{key_repository::AccessKey, ShieldingCryptoDecrypt, ShieldingCryptoEncrypt};
 use itp_stf_executor::traits::StfEnclaveSigning;
+use itp_stf_primitives::types::AccountId;
 use itp_top_pool_author::traits::AuthorApi;
 use itp_types::{CallWorkerFn, OpaqueCall, ShardIdentifier, ShieldFundsFn, H256};
 use log::*;
@@ -125,17 +126,21 @@ where
 	/// Creates a processed_parentchain_block extrinsic for a given parentchain block hash and the merkle executed extrinsics.
 	///
 	/// Calculates the merkle root of the extrinsics. In case no extrinsics are supplied, the root will be a hash filled with zeros.
-	fn create_processed_parentchain_block_call(
+	fn create_processed_parentchain_block_call<ParentchainBlock>(
 		&self,
 		block_hash: H256,
 		extrinsics: Vec<H256>,
-	) -> Result<OpaqueCall> {
+		block_number: <<ParentchainBlock as ParentchainBlockTrait>::Header as Header>::Number,
+	) -> Result<OpaqueCall>
+	where
+		ParentchainBlock: ParentchainBlockTrait<Hash = H256>,
+	{
 		let call = self.node_meta_data_provider.get_from_metadata(|meta_data| {
 			meta_data.confirm_processed_parentchain_block_call_indexes()
 		})??;
 
-		let root: H256 = merkle_root::<Keccak256, _, _>(extrinsics).into();
-		Ok(OpaqueCall::from_tuple(&(call, block_hash, root)))
+		let root: H256 = merkle_root::<Keccak256, _>(extrinsics);
+		Ok(OpaqueCall::from_tuple(&(call, block_hash, block_number, root)))
 	}
 
 	fn is_shield_funds_function(&self, function: &[u8; 2]) -> bool {
@@ -233,7 +238,11 @@ impl<ShieldingKeyRepository, StfEnclaveSigner, TopPoolAuthor, NodeMetadataProvid
 		}
 
 		// Include a processed parentchain block confirmation for each block.
-		self.create_processed_parentchain_block_call(block_hash, executed_shielding_calls)
+		self.create_processed_parentchain_block_call::<ParentchainBlock>(
+			block_hash,
+			executed_shielding_calls,
+			block_number,
+		)
 	}
 }
 
@@ -254,7 +263,7 @@ mod test {
 	use itp_stf_executor::mocks::StfEnclaveSignerMock;
 	use itp_test::mock::shielding_crypto_mock::ShieldingCryptoMock;
 	use itp_top_pool_author::mocks::AuthorApiMock;
-	use itp_types::{Request, ShardIdentifier};
+	use itp_types::{Block, Request, ShardIdentifier};
 	use sp_core::{ed25519, Pair};
 	use sp_runtime::{MultiSignature, OpaqueExtrinsic};
 	use std::assert_matches::assert_matches;
@@ -340,11 +349,11 @@ mod test {
 		let confirm_processed_parentchain_block_indexes =
 			dummy_metadata.confirm_processed_parentchain_block_call_indexes().unwrap();
 		let expected_call =
-			(confirm_processed_parentchain_block_indexes, block_hash, H256::default()).encode();
+			(confirm_processed_parentchain_block_indexes, block_hash, 1, H256::default()).encode();
 
 		// when
 		let call = indirect_calls_executor
-			.create_processed_parentchain_block_call(block_hash, extrinsics)
+			.create_processed_parentchain_block_call::<Block>(block_hash, extrinsics, 1)
 			.unwrap();
 
 		// then
@@ -363,11 +372,11 @@ mod test {
 			dummy_metadata.confirm_processed_parentchain_block_call_indexes().unwrap();
 
 		let zero_root_call =
-			(confirm_processed_parentchain_block_indexes, block_hash, H256::default()).encode();
+			(confirm_processed_parentchain_block_indexes, block_hash, 1, H256::default()).encode();
 
 		// when
 		let call = indirect_calls_executor
-			.create_processed_parentchain_block_call(block_hash, extrinsics)
+			.create_processed_parentchain_block_call::<Block>(block_hash, extrinsics, 1)
 			.unwrap();
 
 		// then
