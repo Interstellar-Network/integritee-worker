@@ -172,11 +172,7 @@ impl ExecuteGetter for Getter {
 					},
 				// [interstellar] pallet ocw-garble
 				TrustedGetter::most_recent_circuits(who) =>
-					if let Some(circuits) = get_most_recent_circuits_for(&who) {
-						Some(circuits.encode())
-					} else {
-						None
-					},
+					get_most_recent_circuits_for(&who).map(|circuits| circuits.encode()),
 			},
 			Getter::public(g) => match g {
 				PublicGetter::some_value => Some(42u32.encode()),

@@ -26,8 +26,6 @@ This is part of [Integritee](https://integritee.network)
 
 **WIP**  `(cd cli/ && ./demo_interstellar.sh -p 9990 -P 2090)`
 
-T  o start multiple worker and a node with one simple command: Check out [this README](local-setup/README.md).
-
 ### SGX(enclave) compilation errors
 
 If the root crate compiles but `enclave-runtime` does not with some std related error:

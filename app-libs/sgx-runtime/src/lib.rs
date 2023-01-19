@@ -46,9 +46,7 @@ use sp_api::impl_runtime_apis;
 use sp_core::OpaqueMetadata;
 use sp_runtime::{
 	create_runtime_str, generic,
-	traits::{
-		AccountIdLookup, BlakeTwo256, Block as BlockT, IdentifyAccount, SaturatedConversion, Verify,
-	},
+	traits::{AccountIdLookup, BlakeTwo256, Block as BlockT, SaturatedConversion},
 };
 use sp_std::prelude::*;
 use sp_version::RuntimeVersion;

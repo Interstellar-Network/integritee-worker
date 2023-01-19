@@ -409,7 +409,7 @@ impl ExecuteCall for TrustedCallSigned {
 						e.error
 					))
 				})
-				.and_then(|result| {
+				.and_then(|_result| {
 					ita_sgx_runtime::TxRegistryCall::<Runtime>::store_tx_result {
 						message_pgarbled_cid: ipfs_cid.into_bytes(),
 						result: pallet_tx_registry::TxResult::TxPass,

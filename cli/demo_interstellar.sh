@@ -141,7 +141,7 @@ if [[ "$OCW_CIRCUITS_STORAGE" == "null" ]]; then
     ${CLIENT} demo-ocw-circuits-submit-config-display-circuits-package
 
     # TODO goto before if and wait in loop until ready
-    echo "Extrinsic started: wait a few seconds(~5-10s) and restart this script"
+    echo "Extrinsic started: wait a few seconds(~45-60s) and restart this script"
     exit 1
 else
     echo "OCW_CIRCUITS_STORAGE already initialized"
