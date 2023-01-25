@@ -231,7 +231,7 @@ where
 		proposer_environment,
 	)
 	.with_claim_strategy(SlotClaimStrategy::RoundRobin)
-	.with_allow_delayed_proposal(false);
+	.with_allow_delayed_proposal(true);
 
 	let (blocks, xts): (Vec<_>, Vec<_>) =
 		PerShardSlotWorkerScheduler::on_slot(&mut aura, slot, shards)

@@ -8,10 +8,11 @@ This is part of [Integritee](https://integritee.network)
 ~~Please see our [Integritee Book](https://docs.integritee.network/4-development/4.4-sdk) to learn how to build and run this.~~
 
 - install SGX SDK
-  - You can find working but (too) specific steps in the [CI](.github/workflows/rust.yml#L170)
+  - You can find working but (too) specific steps in the [CI](.github/workflows/rust.yml#L31)
   - Or DIY [official guide](https://download.01.org/intel-sgx/sgx-dcap/1.11/linux/docs/Intel_SGX_SW_Installation_Guide_for_Linux.pdf)
-- setup needed env vars eg `source /opt/intel/sgxsdk/environment` && `export PATH=/opt/intel/bin:$PATH`
+- setup needed env vars eg `source /opt/intel/sgxsdk/environment`
   - NOTE: it MUST match the directory where you installed the SDK
+  - NOTE: the PATH MUST contain "Intel binutils"(ie linker etc)
 - compile and run the tests: `make && (cd bin/ && touch spid.txt key.txt && ./integritee-service test --all)` and `cargo test --release`
   - NOTE: SGX tests MUST be run with a special exe, **NOT** using `cargo test`
   - IF you get compilation errors like:
@@ -21,7 +22,7 @@ This is part of [Integritee](https://integritee.network)
   ```
   It means the SDK is not properly installed and/or the env vars are not properly set.
 
-**WIP** `PATH=/opt/intel/bin:$PATH make && (cd bin && RUST_LOG=warn RUST_BACKTRACE=1 ./integritee-service --clean-reset -P 2090 -p 9990 -r 3490 -w 2091 -h 4545 run --skip-ra --dev)`
+**WIP** `make && (cd bin && RUST_LOG=warn RUST_BACKTRACE=1 INTERSTELLAR_URI_NODE=http://127.0.0.1:8990 IPFS_ROOT_URL=http://127.0.0.1:5001 ./integritee-service --clean-reset -P 2090 -p 9990 -r 3490 -w 2091 -h 4545 run --skip-ra --dev)`
 
 **WIP**  `(cd cli/ && ./demo_interstellar.sh -p 9990 -P 2090)`
 
