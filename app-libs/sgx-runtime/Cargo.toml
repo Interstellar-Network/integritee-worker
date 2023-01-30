@@ -47,7 +47,10 @@ sp-version = { default-features = false, git = "https://github.com/paritytech/su
 
 # Integritee dependencies
 pallet-evm = { default-features = false, optional = true, git = "https://github.com/integritee-network/frontier.git", branch = "polkadot-v0.9.36" }
-pallet-parentchain = { default-features = false, git = "https://github.com/integritee-network/pallets.git", branch = "master" }
+# commit: "upgrade to Polkadot v0.9.36"
+# NOTE: use the same rev as the node for consistency
+# see also https://github.com/integritee-network/worker/blob/master/Cargo.lock
+pallet-parentchain = { default-features = false, git = "https://github.com/integritee-network/pallets.git", rev = "1cdcfaa358f74971a1c6e5cdedb0e203c6c8f71c" }
 
 # [interstellar]
 pallet-mobile-registry = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "interstellar-M5" }

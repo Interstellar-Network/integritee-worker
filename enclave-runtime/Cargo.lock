@@ -3241,7 +3241,7 @@ dependencies = [
 [[package]]
 name = "pallet-parentchain"
 version = "0.9.0"
-source = "git+https://github.com/integritee-network/pallets.git?branch=master#a820beded0935e4612b1a54ff3cff26472dd045d"
+source = "git+https://github.com/integritee-network/pallets.git?rev=1cdcfaa358f74971a1c6e5cdedb0e203c6c8f71c#1cdcfaa358f74971a1c6e5cdedb0e203c6c8f71c"
 dependencies = [
  "frame-support",
  "frame-system",

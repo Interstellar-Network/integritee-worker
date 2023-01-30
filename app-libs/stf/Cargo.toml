@@ -37,7 +37,10 @@ sp-runtime = { default-features = false, git = "https://github.com/paritytech/su
 
 # scs / integritee
 my-node-runtime = { package = "integritee-node-runtime", optional = true, git = "https://github.com/integritee-network/integritee-node.git", branch = "master" }
-pallet-parentchain = { default-features = false, git = "https://github.com/integritee-network/pallets.git", branch = "master" }
+# commit: "upgrade to Polkadot v0.9.36"
+# NOTE: use the same rev as the node for consistency
+# see also https://github.com/integritee-network/worker/blob/master/Cargo.lock
+pallet-parentchain = { default-features = false, git = "https://github.com/integritee-network/pallets.git", rev = "1cdcfaa358f74971a1c6e5cdedb0e203c6c8f71c" }
 
 
 # [interstellar]
