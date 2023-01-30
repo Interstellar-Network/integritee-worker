@@ -45,17 +45,25 @@ pub enum Commands {
 	Oracle(OracleSubCommand),
 }
 
-pub fn match_command(cli: &Cli) {
+pub fn match_command(cli: &Cli) -> Option<Vec<u8>> {
 	#[allow(non_snake_case, unused_variables)]
 	match &cli.command {
-		Commands::Base(cmd) => cmd.run(cli),
+		Commands::Base(cmd) => {
+			cmd.run(cli);
+			None
+		},
 		Commands::Trusted(cmd) => cmd.run(cli),
 		#[cfg(feature = "teeracle")]
-		Commands::Oracle(cmd) => cmd.run(cli),
+		Commands::Oracle(cmd) => {
+			cmd.run(cli);
+			None
+		},
 		// [interstellar][DEMO ONLY]
-		DemoOcwCircuitsSubmitConfigDisplayCircuitsPackage =>
-			demo_pallet_ocw_circuits_submit_config_display_circuits_package_signed(cli),
-	};
+		DemoOcwCircuitsSubmitConfigDisplayCircuitsPackage => {
+			demo_pallet_ocw_circuits_submit_config_display_circuits_package_signed(cli);
+			None
+		},
+	}
 }
 
 /// [interstellar][DEMO ONLY]

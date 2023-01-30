@@ -32,7 +32,7 @@ pub(crate) fn ocw_garble_garble_and_strip_display_circuits_package_signed(
 	trusted_args: &TrustedArgs,
 	player_creator: &str,
 	tx_msg: &str,
-) {
+) -> Option<Vec<u8>> {
 	let creator = get_pair_from_str(trusted_args, player_creator);
 	let direct: bool = trusted_args.direct;
 
@@ -52,7 +52,7 @@ pub(crate) fn ocw_garble_garble_and_strip_display_circuits_package_signed(
 	.sign(&KeyPair::Sr25519(Box::new(creator)), nonce, &mrenclave, &shard)
 	.into_trusted_operation(direct);
 
-	let _ = perform_trusted_operation(cli, trusted_args, &top);
+	perform_trusted_operation(cli, trusted_args, &top)
 }
 
 /// pallet tx-validation: check_input
@@ -62,7 +62,7 @@ pub(crate) fn tx_validation_check_input(
 	player_creator: &str,
 	ipfs_cid: &str,
 	input_digits: &Vec<u8>,
-) {
+) -> Option<Vec<u8>> {
 	let creator = get_pair_from_str(trusted_args, player_creator);
 	let direct: bool = trusted_args.direct;
 
@@ -84,7 +84,7 @@ pub(crate) fn tx_validation_check_input(
 	.sign(&KeyPair::Sr25519(Box::new(creator)), nonce, &mrenclave, &shard)
 	.into_trusted_operation(direct);
 
-	let _ = perform_trusted_operation(cli, trusted_args, &top);
+	perform_trusted_operation(cli, trusted_args, &top)
 }
 
 /// Query circuits state for a specific account.
@@ -92,7 +92,7 @@ pub(crate) fn ocw_garble_get_most_recent_circuits_package(
 	cli: &Cli,
 	trusted_args: &TrustedArgs,
 	arg_account: &str,
-) {
+) -> Option<Vec<u8>> {
 	// TODO? apparently the "getters" does not return a value, so we MUST use
 	// println to see a result in cli/demo_interstellar.sh
 
@@ -104,7 +104,7 @@ pub(crate) fn ocw_garble_get_most_recent_circuits_package(
 
 	let getter_result = perform_trusted_operation(cli, trusted_args, &top);
 
-	if let Some(circuits_encoded) = getter_result {
+	if let Some(circuits_encoded) = getter_result.clone() {
 		if let Ok(circuits) = pallet_ocw_garble::DisplayStrippedCircuitsPackage::decode(
 			&mut circuits_encoded.as_slice(),
 		) {
@@ -125,4 +125,6 @@ pub(crate) fn ocw_garble_get_most_recent_circuits_package(
 	} else {
 		println!("could not fetch circuits");
 	};
+
+	getter_result
 }

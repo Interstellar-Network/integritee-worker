@@ -57,12 +57,18 @@ pub enum TrustedCommands {
 }
 
 impl TrustedArgs {
-	pub(crate) fn run(&self, cli: &Cli) {
+	pub(crate) fn run(&self, cli: &Cli) -> Option<Vec<u8>> {
 		match &self.command {
 			TrustedCommands::BaseTrusted(cmd) => cmd.run(cli, self),
-			TrustedCommands::Benchmark(benchmark_commands) => benchmark_commands.run(cli, self),
+			TrustedCommands::Benchmark(benchmark_commands) => {
+				benchmark_commands.run(cli, self);
+				None
+			},
 			#[cfg(feature = "evm")]
-			TrustedCommands::EvmCommands(evm_commands) => evm_commands.run(cli, self),
+			TrustedCommands::EvmCommands(evm_commands) => {
+				evm_commands.run(cli, self);
+				None
+			},
 		}
 	}
 }

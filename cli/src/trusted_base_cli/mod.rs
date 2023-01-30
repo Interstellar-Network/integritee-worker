@@ -86,14 +86,32 @@ pub enum TrustedBaseCli {
 }
 
 impl TrustedBaseCli {
-	pub fn run(&self, cli: &Cli, trusted_args: &TrustedArgs) {
+	pub fn run(&self, cli: &Cli, trusted_args: &TrustedArgs) -> Option<Vec<u8>> {
 		match self {
-			TrustedBaseCli::NewAccount => new_account(trusted_args),
-			TrustedBaseCli::ListAccounts => list_accounts(trusted_args),
-			TrustedBaseCli::Transfer(cmd) => cmd.run(cli, trusted_args),
-			TrustedBaseCli::SetBalance(cmd) => cmd.run(cli, trusted_args),
-			TrustedBaseCli::Balance(cmd) => cmd.run(cli, trusted_args),
-			TrustedBaseCli::UnshieldFunds(cmd) => cmd.run(cli, trusted_args),
+			TrustedBaseCli::NewAccount => {
+				new_account(trusted_args);
+				None
+			},
+			TrustedBaseCli::ListAccounts => {
+				list_accounts(trusted_args);
+				None
+			},
+			TrustedBaseCli::Transfer(cmd) => {
+				cmd.run(cli, trusted_args);
+				None
+			},
+			TrustedBaseCli::SetBalance(cmd) => {
+				cmd.run(cli, trusted_args);
+				None
+			},
+			TrustedBaseCli::Balance(cmd) => {
+				cmd.run(cli, trusted_args);
+				None
+			},
+			TrustedBaseCli::UnshieldFunds(cmd) => {
+				cmd.run(cli, trusted_args);
+				None
+			},
 			// [interstellar]
 			TrustedBaseCli::GarbleAndStripDisplayCircuitsPackageSigned { account, tx_msg } =>
 				ocw_garble_garble_and_strip_display_circuits_package_signed(
