@@ -196,6 +196,7 @@ sgx_types = { version = "1.1.6", git = "https://github.com/apache/incubator-teac
 # ipfs-client-http-req = { path = "../../lib-garble-rs/ipfs-client-http-req/" }
 
 # [patch."https://github.com/Interstellar-Network/pallets.git"]
+# circuits-storage-common = { path = "../../pallets/circuits-storage-common/" }
 # pallet-mobile-registry = { path = "../../pallets/pallets/mobile-registry/" }
 # pallet-ocw-circuits = { path = "../../pallets/pallets/ocw-circuits/" }
 # pallet-ocw-garble = { path = "../../pallets/pallets/ocw-garble/" }

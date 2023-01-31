@@ -86,7 +86,7 @@ sgx_urts = { version = "1.1.6", git = "https://github.com/apache/incubator-teacl
 #sp-io = { path = "../sgx-runtime/substrate-sgx/sp-io"}
 #sgx-externalities = { path = "../sgx-runtime/substrate-sgx/externalities"}
 
-#[patch."https://github.com/integritee-network/integritee-node"]
+#[patch."https://github.com/Interstellar-Network/integritee-node.git"]
 #my-node-runtime = { package = "integritee-node-runtime", path = "../integritee-node/runtime"}
 
 #[patch."https://github.com/scs/substrate-api-client"]
@@ -116,6 +116,7 @@ sgx_urts = { version = "1.1.6", git = "https://github.com/apache/incubator-teacl
 # ipfs-client-http-req = { path = "../lib-garble-rs/ipfs-client-http-req/" }
 
 # [patch."https://github.com/Interstellar-Network/pallets.git"]
+# circuits-storage-common = { path = "../pallets/circuits-storage-common/" }
 # pallet-mobile-registry = { path = "../pallets/pallets/mobile-registry/" }
 # pallet-ocw-circuits = { path = "../pallets/pallets/ocw-circuits/" }
 # pallet-ocw-garble = { path = "../pallets/pallets/ocw-garble/" }
