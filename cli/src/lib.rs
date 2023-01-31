@@ -44,6 +44,8 @@ use crate::commands::Commands;
 use clap::Parser;
 use substrate_api_client::RuntimeMetadataPrefixed;
 
+pub use pallet_ocw_garble::DisplayStrippedCircuitsPackage as PalletOcwGarbleDisplayStrippedCircuitsPackage;
+
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Parser)]
@@ -77,6 +79,9 @@ pub enum CliResult {
 	/// default: ie the result of "perform_trusted_operation"
 	TrustedOpRes {
 		res: Option<Vec<u8>>,
+	},
+	DisplayStrippedCircuitsPackage {
+		circuit: PalletOcwGarbleDisplayStrippedCircuitsPackage,
 	},
 	/// ???
 	String {

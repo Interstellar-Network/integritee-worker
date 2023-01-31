@@ -89,7 +89,7 @@ impl TrustedGetter {
 			#[cfg(feature = "evm")]
 			TrustedGetter::evm_account_storages(sender_account, ..) => sender_account,
 			// [interstellar] pallet ocw-garble
-			TrustedGetter::most_recent_circuits(account) => account,
+			TrustedGetter::most_recent_circuits(sender_account) => sender_account,
 		}
 	}
 

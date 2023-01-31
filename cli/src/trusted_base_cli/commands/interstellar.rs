@@ -98,27 +98,31 @@ pub(crate) fn ocw_garble_get_most_recent_circuits_package(
 
 	let account = get_pair_from_str(trusted_args, arg_account);
 	println!("account ss58 is {}", account.public().to_ss58check());
+	// NOTE: this will end up calling "fn get_most_recent_circuits_for" in app-libs/stf/src/helpers.rs
+	// and this returns ONE Circuit(the most recent)
 	let top: TrustedOperation = TrustedGetter::most_recent_circuits(account.public().into())
 		.sign(&KeyPair::Sr25519(Box::new(account)))
 		.into();
 
 	let getter_result = perform_trusted_operation(cli, trusted_args, &top);
 
-	if let Some(circuits_encoded) = getter_result.clone() {
-		if let Ok(circuits) = pallet_ocw_garble::DisplayStrippedCircuitsPackage::decode(
+	if let Some(circuits_encoded) = getter_result {
+		if let Ok(circuit) = pallet_ocw_garble::DisplayStrippedCircuitsPackage::decode(
 			&mut circuits_encoded.as_slice(),
 		) {
 			println!(
 				"circuits : message_pgarbled_cid: {:?}, message_packmsg_cid: {:?}, pinpad_pgarbled_cid: {:?}, pinpad_packmsg_cid: {:?}",
-				std::str::from_utf8(&circuits.message_pgarbled_cid)
+				std::str::from_utf8(&circuit.message_pgarbled_cid)
 					.expect("message_pgarbled_cid utf8"),
-				std::str::from_utf8(&circuits.message_packmsg_cid)
+				std::str::from_utf8(&circuit.message_packmsg_cid)
 					.expect("message_packmsg_cid utf8"),
-				std::str::from_utf8(&circuits.pinpad_pgarbled_cid)
+				std::str::from_utf8(&circuit.pinpad_pgarbled_cid)
 					.expect("pinpad_pgarbled_cid utf8"),
-				std::str::from_utf8(&circuits.pinpad_packmsg_cid)
+				std::str::from_utf8(&circuit.pinpad_packmsg_cid)
 					.expect("pinpad_packmsg_cid utf8"),
 			);
+
+			return CliResult::DisplayStrippedCircuitsPackage { circuit }
 		} else {
 			println!("could not decode circuits. maybe hasn't been set? {:x?}", circuits_encoded);
 		}
@@ -126,5 +130,5 @@ pub(crate) fn ocw_garble_get_most_recent_circuits_package(
 		println!("could not fetch circuits");
 	};
 
-	CliResult::TrustedOpRes { res: getter_result }
+	CliResult::None
 }
