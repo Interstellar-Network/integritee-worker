@@ -16,7 +16,7 @@
 */
 
 extern crate chrono;
-use crate::{base_cli::BaseCli, command_utils::*, trusted_commands::TrustedArgs, Cli};
+use crate::{base_cli::BaseCli, command_utils::*, trusted_commands::TrustedArgs, Cli, CliResult};
 use clap::Subcommand;
 use log::*;
 use sp_keyring::AccountKeyring;
@@ -45,13 +45,10 @@ pub enum Commands {
 	Oracle(OracleSubCommand),
 }
 
-pub fn match_command(cli: &Cli) -> Option<Vec<u8>> {
+pub fn match_command(cli: &Cli) -> CliResult {
 	#[allow(non_snake_case, unused_variables)]
 	match &cli.command {
-		Commands::Base(cmd) => {
-			cmd.run(cli);
-			None
-		},
+		Commands::Base(cmd) => cmd.run(cli),
 		Commands::Trusted(cmd) => cmd.run(cli),
 		#[cfg(feature = "teeracle")]
 		Commands::Oracle(cmd) => {
@@ -59,10 +56,8 @@ pub fn match_command(cli: &Cli) -> Option<Vec<u8>> {
 			None
 		},
 		// [interstellar][DEMO ONLY]
-		DemoOcwCircuitsSubmitConfigDisplayCircuitsPackage => {
-			demo_pallet_ocw_circuits_submit_config_display_circuits_package_signed(cli);
-			None
-		},
+		DemoOcwCircuitsSubmitConfigDisplayCircuitsPackage =>
+			demo_pallet_ocw_circuits_submit_config_display_circuits_package_signed(cli),
 	}
 }
 
@@ -70,7 +65,7 @@ pub fn match_command(cli: &Cli) -> Option<Vec<u8>> {
 /// Convenience function to be able to call Extrinsic "ocwCircuits::submitConfigDisplayCircuitsPackageSigned"
 /// from the demo script cli/demo_interstellar.sh
 /// That avoids having to use a front-end for the M4 demo.
-fn demo_pallet_ocw_circuits_submit_config_display_circuits_package_signed(cli: &Cli) {
+fn demo_pallet_ocw_circuits_submit_config_display_circuits_package_signed(cli: &Cli) -> CliResult {
 	// NOTE: this assumes Alice is sudo; but that should be the case for the demos
 	let api = get_chain_api(cli).set_signer(AccountKeyring::Alice.pair());
 
@@ -93,4 +88,6 @@ fn demo_pallet_ocw_circuits_submit_config_display_circuits_package_signed(cli: &
 	let tx_hash = tx_hash.expect("send_extrinsic failed");
 
 	debug!("[+] TrustedOperation got finalized. Hash: {:?}\n", tx_hash);
+
+	CliResult::None
 }

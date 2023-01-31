@@ -42,6 +42,7 @@ mod trusted_operation;
 
 use crate::commands::Commands;
 use clap::Parser;
+use substrate_api_client::RuntimeMetadataPrefixed;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -70,4 +71,30 @@ pub struct Cli {
 
 	#[clap(subcommand)]
 	command: Commands,
+}
+
+pub enum CliResult {
+	/// default: ie the result of "perform_trusted_operation"
+	TrustedOpRes {
+		res: Option<Vec<u8>>,
+	},
+	/// ???
+	String {
+		str: String,
+	},
+	PubKeysBase58 {
+		pubkeys_sr25519: Option<Vec<String>>,
+		pubkeys_ed25519: Option<Vec<String>>,
+	},
+	Balance {
+		balance: u128,
+	},
+	MrEnclaveBase58 {
+		mr_enclaves: Vec<String>,
+	},
+	Metadata {
+		metadata: RuntimeMetadataPrefixed,
+	},
+	// TODO?
+	None,
 }

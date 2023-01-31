@@ -17,7 +17,7 @@
 
 use crate::{
 	command_utils::{get_accountid_from_str, get_chain_api, *},
-	Cli,
+	Cli, CliResult,
 };
 use log::*;
 use my_node_runtime::Balance;
@@ -37,7 +37,7 @@ pub struct TransferCommand {
 }
 
 impl TransferCommand {
-	pub(crate) fn run(&self, cli: &Cli) {
+	pub(crate) fn run(&self, cli: &Cli) -> CliResult {
 		let from_account = get_pair_from_str(&self.from);
 		let to_account = get_accountid_from_str(&self.to);
 		info!("from ss58 is {}", from_account.public().to_ss58check());
@@ -47,6 +47,9 @@ impl TransferCommand {
 		let tx_hash = api.send_extrinsic(xt.hex_encode(), XtStatus::InBlock).unwrap();
 		println!("[+] TrustedOperation got finalized. Hash: {:?}\n", tx_hash);
 		let result = api.get_account_data(&to_account).unwrap().unwrap();
-		println!("balance for {} is now {}", to_account, result.free);
+		let balance = result.free;
+		println!("balance for {} is now {}", to_account, balance);
+
+		CliResult::Balance { balance }
 	}
 }

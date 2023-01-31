@@ -17,7 +17,7 @@
 
 use crate::{
 	command_utils::{get_accountid_from_str, get_chain_api},
-	Cli,
+	Cli, CliResult,
 };
 use my_node_runtime::{BalancesCall, RuntimeCall};
 use sp_keyring::AccountKeyring;
@@ -35,7 +35,7 @@ pub struct FaucetCommand {
 }
 
 impl FaucetCommand {
-	pub(crate) fn run(&self, cli: &Cli) {
+	pub(crate) fn run(&self, cli: &Cli) -> CliResult {
 		let api = get_chain_api(cli).set_signer(AccountKeyring::Alice.pair());
 		let mut nonce = api.get_nonce().unwrap();
 		for account in &self.accounts {
@@ -54,5 +54,7 @@ impl FaucetCommand {
 			let _blockh = api.send_extrinsic(xt.hex_encode(), XtStatus::Ready).unwrap();
 			nonce += 1;
 		}
+
+		CliResult::None
 	}
 }

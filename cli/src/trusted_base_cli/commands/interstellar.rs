@@ -16,7 +16,7 @@ use crate::{
 	trusted_command_utils::{get_identifiers, get_pair_from_str},
 	trusted_commands::TrustedArgs,
 	trusted_operation::perform_trusted_operation,
-	Cli,
+	Cli, CliResult,
 };
 use codec::Decode;
 use core::primitive::str;
@@ -32,7 +32,7 @@ pub(crate) fn ocw_garble_garble_and_strip_display_circuits_package_signed(
 	trusted_args: &TrustedArgs,
 	player_creator: &str,
 	tx_msg: &str,
-) -> Option<Vec<u8>> {
+) -> CliResult {
 	let creator = get_pair_from_str(trusted_args, player_creator);
 	let direct: bool = trusted_args.direct;
 
@@ -52,7 +52,7 @@ pub(crate) fn ocw_garble_garble_and_strip_display_circuits_package_signed(
 	.sign(&KeyPair::Sr25519(Box::new(creator)), nonce, &mrenclave, &shard)
 	.into_trusted_operation(direct);
 
-	perform_trusted_operation(cli, trusted_args, &top)
+	CliResult::TrustedOpRes { res: perform_trusted_operation(cli, trusted_args, &top) }
 }
 
 /// pallet tx-validation: check_input
@@ -62,7 +62,7 @@ pub(crate) fn tx_validation_check_input(
 	player_creator: &str,
 	ipfs_cid: &str,
 	input_digits: &Vec<u8>,
-) -> Option<Vec<u8>> {
+) -> CliResult {
 	let creator = get_pair_from_str(trusted_args, player_creator);
 	let direct: bool = trusted_args.direct;
 
@@ -84,7 +84,7 @@ pub(crate) fn tx_validation_check_input(
 	.sign(&KeyPair::Sr25519(Box::new(creator)), nonce, &mrenclave, &shard)
 	.into_trusted_operation(direct);
 
-	perform_trusted_operation(cli, trusted_args, &top)
+	CliResult::TrustedOpRes { res: perform_trusted_operation(cli, trusted_args, &top) }
 }
 
 /// Query circuits state for a specific account.
@@ -92,7 +92,7 @@ pub(crate) fn ocw_garble_get_most_recent_circuits_package(
 	cli: &Cli,
 	trusted_args: &TrustedArgs,
 	arg_account: &str,
-) -> Option<Vec<u8>> {
+) -> CliResult {
 	// TODO? apparently the "getters" does not return a value, so we MUST use
 	// println to see a result in cli/demo_interstellar.sh
 
@@ -126,5 +126,5 @@ pub(crate) fn ocw_garble_get_most_recent_circuits_package(
 		println!("could not fetch circuits");
 	};
 
-	getter_result
+	CliResult::TrustedOpRes { res: getter_result }
 }
