@@ -28,7 +28,7 @@ use crate::{
 	},
 	trusted_command_utils::get_keystore_path,
 	trusted_commands::TrustedArgs,
-	Cli, CliResult,
+	Cli, CliResult, CliResultOk,
 };
 use log::*;
 use sp_application_crypto::{ed25519, sr25519};
@@ -118,7 +118,7 @@ fn new_account(trusted_args: &TrustedArgs) -> CliResult {
 	let key_str = key.public().to_ss58check();
 	println!("{}", key_str);
 
-	CliResult::String { str: key_str }
+	Ok(CliResultOk::String { str: key_str })
 }
 
 fn list_accounts(trusted_args: &TrustedArgs) -> CliResult {
@@ -139,5 +139,5 @@ fn list_accounts(trusted_args: &TrustedArgs) -> CliResult {
 	}
 	drop(store);
 
-	CliResult::PubKeysBase58 { pubkeys_sr25519: None, pubkeys_ed25519: Some(pubkeys) }
+	Ok(CliResultOk::PubKeysBase58 { pubkeys_sr25519: None, pubkeys_ed25519: Some(pubkeys) })
 }

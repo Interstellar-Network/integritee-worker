@@ -6,5 +6,5 @@ fn main() {
 
 	let cli = Cli::parse();
 
-	commands::match_command(&cli);
+	commands::match_command(&cli).unwrap();
 }

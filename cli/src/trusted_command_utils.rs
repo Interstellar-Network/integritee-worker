@@ -37,7 +37,7 @@ macro_rules! get_layer_two_nonce {
 		let top: TrustedOperation = TrustedGetter::nonce($signer_pair.public().into())
 			.sign(&KeyPair::Sr25519(Box::new($signer_pair.clone())))
 			.into();
-		let res = perform_trusted_operation($cli, $trusted_args, &top);
+		let res = perform_trusted_operation($cli, $trusted_args, &top).unwrap_or_default();
 		let nonce: Index = if let Some(n) = res {
 			if let Ok(nonce) = Index::decode(&mut n.as_slice()) {
 				nonce
@@ -60,7 +60,7 @@ pub(crate) fn get_balance(cli: &Cli, trusted_args: &TrustedArgs, arg_who: &str) 
 	let top: TrustedOperation = TrustedGetter::free_balance(who.public().into())
 		.sign(&KeyPair::Sr25519(Box::new(who)))
 		.into();
-	let res = perform_trusted_operation(cli, trusted_args, &top);
+	let res = perform_trusted_operation(cli, trusted_args, &top).unwrap_or(None);
 	debug!("received result for balance");
 	decode_balance(res)
 }

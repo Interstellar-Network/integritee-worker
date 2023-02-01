@@ -17,7 +17,7 @@
 
 use crate::{
 	command_utils::{get_accountid_from_str, get_chain_api, *},
-	Cli, CliResult,
+	Cli, CliResult, CliResultOk,
 };
 use base58::FromBase58;
 use codec::{Decode, Encode};
@@ -81,6 +81,6 @@ impl ShieldFundsCommand {
 		let tx_hash = chain_api.send_extrinsic(xt.hex_encode(), XtStatus::Finalized).unwrap();
 		println!("[+] TrustedOperation got finalized. Hash: {:?}\n", tx_hash);
 
-		CliResult::None
+		Ok(CliResultOk::None)
 	}
 }

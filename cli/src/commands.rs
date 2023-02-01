@@ -16,7 +16,9 @@
 */
 
 extern crate chrono;
-use crate::{base_cli::BaseCli, command_utils::*, trusted_commands::TrustedArgs, Cli, CliResult};
+use crate::{
+	base_cli::BaseCli, command_utils::*, trusted_commands::TrustedArgs, Cli, CliResult, CliResultOk,
+};
 use clap::Subcommand;
 use log::*;
 use sp_keyring::AccountKeyring;
@@ -89,5 +91,5 @@ fn demo_pallet_ocw_circuits_submit_config_display_circuits_package_signed(cli: &
 
 	debug!("[+] TrustedOperation got finalized. Hash: {:?}\n", tx_hash);
 
-	CliResult::None
+	Ok(CliResultOk::None)
 }

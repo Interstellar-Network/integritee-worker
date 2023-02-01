@@ -42,6 +42,7 @@ mod trusted_operation;
 
 use crate::commands::Commands;
 use clap::Parser;
+use snafu::prelude::*;
 use substrate_api_client::RuntimeMetadataPrefixed;
 
 pub use pallet_ocw_garble::DisplayStrippedCircuitsPackage as PalletOcwGarbleDisplayStrippedCircuitsPackage;
@@ -75,7 +76,7 @@ pub struct Cli {
 	command: Commands,
 }
 
-pub enum CliResult {
+pub enum CliResultOk {
 	/// default: ie the result of "perform_trusted_operation"
 	TrustedOpRes {
 		res: Option<Vec<u8>>,
@@ -100,6 +101,25 @@ pub enum CliResult {
 	Metadata {
 		metadata: RuntimeMetadataPrefixed,
 	},
+	State {
+		maybe_state: Option<Vec<u8>>,
+	},
 	// TODO?
 	None,
+}
+
+#[derive(Debug, Snafu)]
+pub enum CliError {
+	#[snafu(display("default error: {:?}", msg))]
+	Default { msg: String },
+	#[snafu(display("trusted operation error: {:?}", msg))]
+	TrustedOp { msg: String },
+}
+
+pub type CliResult = Result<CliResultOk, CliError>;
+
+impl From<trusted_operation::TrustedOperationError> for CliError {
+	fn from(value: trusted_operation::TrustedOperationError) -> Self {
+		CliError::TrustedOp { msg: value.to_string() }
+	}
 }

@@ -57,6 +57,7 @@ pallet-mobile-registry = { default-features = false, git = "https://github.com/I
 pallet-ocw-circuits = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "interstellar-M5" }
 pallet-ocw-garble = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "interstellar-M5" }
 pallet-tx-validation = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "interstellar-M5" }
+snafu = { version = "0.7", default-features = false }
 
 [features]
 default = []

@@ -15,7 +15,7 @@
 
 */
 
-use crate::{command_utils::get_chain_api, Cli, CliResult};
+use crate::{command_utils::get_chain_api, Cli, CliResult, CliResultOk};
 use base58::ToBase58;
 use codec::{Decode, Encode};
 use log::*;
@@ -46,12 +46,12 @@ impl ListenCommand {
 		loop {
 			if let Some(e) = self.events {
 				if count >= e {
-					return CliResult::None
+					return Ok(CliResultOk::None)
 				}
 			};
 			if let Some(b) = self.blocks {
 				if blocks >= b {
-					return CliResult::None
+					return Ok(CliResultOk::None)
 				}
 			};
 			let event_str = events_out.recv().unwrap();

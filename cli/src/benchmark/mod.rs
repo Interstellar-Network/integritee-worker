@@ -262,7 +262,7 @@ fn get_balance(
 	);
 
 	let getter_start_timer = Instant::now();
-	let getter_result = get_state(direct_client, shard, &getter);
+	let getter_result = get_state(direct_client, shard, &getter).unwrap();
 	let getter_execution_time = getter_start_timer.elapsed().as_millis();
 
 	let balance = decode_balance(getter_result);
@@ -282,7 +282,7 @@ fn get_nonce(
 	);
 
 	let getter_start_timer = Instant::now();
-	let getter_result = get_state(direct_client, shard, &getter);
+	let getter_result = get_state(direct_client, shard, &getter).unwrap_or_default();
 	let getter_execution_time = getter_start_timer.elapsed().as_millis();
 
 	let nonce = match getter_result {

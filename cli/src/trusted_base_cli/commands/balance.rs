@@ -15,7 +15,9 @@
 
 */
 
-use crate::{trusted_command_utils::get_balance, trusted_commands::TrustedArgs, Cli, CliResult};
+use crate::{
+	trusted_command_utils::get_balance, trusted_commands::TrustedArgs, Cli, CliResult, CliResultOk,
+};
 
 #[derive(Parser)]
 pub struct BalanceCommand {
@@ -27,6 +29,6 @@ impl BalanceCommand {
 	pub(crate) fn run(&self, cli: &Cli, trusted_args: &TrustedArgs) -> CliResult {
 		let balance = get_balance(cli, trusted_args, &self.account).unwrap_or_default();
 		println!("{}", balance);
-		CliResult::Balance { balance }
+		Ok(CliResultOk::Balance { balance })
 	}
 }

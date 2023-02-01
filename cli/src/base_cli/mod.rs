@@ -21,7 +21,7 @@ use crate::{
 		shield_funds::ShieldFundsCommand, transfer::TransferCommand,
 	},
 	command_utils::*,
-	Cli, CliResult,
+	Cli, CliResult, CliResultOk,
 };
 use base58::ToBase58;
 use chrono::{DateTime, Utc};
@@ -95,7 +95,10 @@ fn new_account() -> CliResult {
 	let key_base58 = key.public().to_ss58check();
 	drop(store);
 	println!("{}", key_base58);
-	CliResult::PubKeysBase58 { pubkeys_sr25519: Some(vec![key_base58]), pubkeys_ed25519: None }
+	Ok(CliResultOk::PubKeysBase58 {
+		pubkeys_sr25519: Some(vec![key_base58]),
+		pubkeys_ed25519: None,
+	})
 }
 
 fn list_accounts() -> CliResult {
@@ -116,23 +119,23 @@ fn list_accounts() -> CliResult {
 	}
 	drop(store);
 
-	CliResult::PubKeysBase58 {
+	Ok(CliResultOk::PubKeysBase58 {
 		pubkeys_sr25519: Some(keys_sr25519),
 		pubkeys_ed25519: Some(keys_ed25519),
-	}
+	})
 }
 
 fn print_metadata(cli: &Cli) -> CliResult {
-	let meta = get_chain_api(cli).get_metadata().unwrap();
-	println!("Metadata:\n {}", Metadata::pretty_format(&meta).unwrap());
-	CliResult::Metadata { metadata: meta }
+	let metadata = get_chain_api(cli).get_metadata().unwrap();
+	println!("Metadata:\n {}", Metadata::pretty_format(&metadata).unwrap());
+	Ok(CliResultOk::Metadata { metadata })
 }
 
 fn print_sgx_metadata(cli: &Cli) -> CliResult {
 	let worker_api_direct = get_worker_api_direct(cli);
 	let metadata = worker_api_direct.get_state_metadata().unwrap();
 	println!("Metadata:\n {}", Metadata::pretty_format(&metadata).unwrap());
-	CliResult::Metadata { metadata }
+	Ok(CliResultOk::Metadata { metadata })
 }
 
 fn list_workers(cli: &Cli) -> CliResult {
@@ -159,5 +162,5 @@ fn list_workers(cli: &Cli) -> CliResult {
 		mr_enclaves.push(mr_enclave);
 	}
 
-	CliResult::MrEnclaveBase58 { mr_enclaves }
+	Ok(CliResultOk::MrEnclaveBase58 { mr_enclaves })
 }

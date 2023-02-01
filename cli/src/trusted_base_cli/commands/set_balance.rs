@@ -20,7 +20,7 @@ use crate::{
 	trusted_command_utils::{get_identifiers, get_pair_from_str},
 	trusted_commands::TrustedArgs,
 	trusted_operation::perform_trusted_operation,
-	Cli, CliResult,
+	Cli, CliResult, CliResultOk,
 };
 use codec::Decode;
 use ita_stf::{Index, TrustedCall, TrustedGetter, TrustedOperation};
@@ -57,7 +57,6 @@ impl SetBalanceCommand {
 		)
 		.sign(&KeyPair::Sr25519(Box::new(signer)), nonce, &mrenclave, &shard)
 		.into_trusted_operation(trusted_args.direct);
-		let res = perform_trusted_operation(cli, trusted_args, &top);
-		CliResult::TrustedOpRes { res }
+		Ok(perform_trusted_operation(cli, trusted_args, &top).map(|_| CliResultOk::None)?)
 	}
 }

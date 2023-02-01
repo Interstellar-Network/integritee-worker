@@ -16,7 +16,7 @@ use crate::{
 	trusted_command_utils::{get_identifiers, get_pair_from_str},
 	trusted_commands::TrustedArgs,
 	trusted_operation::perform_trusted_operation,
-	Cli, CliResult,
+	Cli, CliError, CliResult, CliResultOk,
 };
 use codec::Decode;
 use core::primitive::str;
@@ -52,7 +52,7 @@ pub(crate) fn ocw_garble_garble_and_strip_display_circuits_package_signed(
 	.sign(&KeyPair::Sr25519(Box::new(creator)), nonce, &mrenclave, &shard)
 	.into_trusted_operation(direct);
 
-	CliResult::TrustedOpRes { res: perform_trusted_operation(cli, trusted_args, &top) }
+	Ok(perform_trusted_operation(cli, trusted_args, &top).map(|_| CliResultOk::None)?)
 }
 
 /// pallet tx-validation: check_input
@@ -84,7 +84,7 @@ pub(crate) fn tx_validation_check_input(
 	.sign(&KeyPair::Sr25519(Box::new(creator)), nonce, &mrenclave, &shard)
 	.into_trusted_operation(direct);
 
-	CliResult::TrustedOpRes { res: perform_trusted_operation(cli, trusted_args, &top) }
+	Ok(perform_trusted_operation(cli, trusted_args, &top).map(|_| CliResultOk::None)?)
 }
 
 /// Query circuits state for a specific account.
@@ -106,29 +106,30 @@ pub(crate) fn ocw_garble_get_most_recent_circuits_package(
 
 	let getter_result = perform_trusted_operation(cli, trusted_args, &top);
 
-	if let Some(circuits_encoded) = getter_result {
-		if let Ok(circuit) = pallet_ocw_garble::DisplayStrippedCircuitsPackage::decode(
-			&mut circuits_encoded.as_slice(),
-		) {
-			println!(
-				"circuits : message_pgarbled_cid: {:?}, message_packmsg_cid: {:?}, pinpad_pgarbled_cid: {:?}, pinpad_packmsg_cid: {:?}",
-				std::str::from_utf8(&circuit.message_pgarbled_cid)
-					.expect("message_pgarbled_cid utf8"),
-				std::str::from_utf8(&circuit.message_packmsg_cid)
-					.expect("message_packmsg_cid utf8"),
-				std::str::from_utf8(&circuit.pinpad_pgarbled_cid)
-					.expect("pinpad_pgarbled_cid utf8"),
-				std::str::from_utf8(&circuit.pinpad_packmsg_cid)
-					.expect("pinpad_packmsg_cid utf8"),
-			);
+	match getter_result {
+		Ok(res) => {
+			if let Ok(circuit) = pallet_ocw_garble::DisplayStrippedCircuitsPackage::decode(
+				&mut res.unwrap_or_default().as_slice(),
+			) {
+				println!(
+					"circuits : message_pgarbled_cid: {:?}, message_packmsg_cid: {:?}, pinpad_pgarbled_cid: {:?}, pinpad_packmsg_cid: {:?}",
+					std::str::from_utf8(&circuit.message_pgarbled_cid)
+						.expect("message_pgarbled_cid utf8"),
+					std::str::from_utf8(&circuit.message_packmsg_cid)
+						.expect("message_packmsg_cid utf8"),
+					std::str::from_utf8(&circuit.pinpad_pgarbled_cid)
+						.expect("pinpad_pgarbled_cid utf8"),
+					std::str::from_utf8(&circuit.pinpad_packmsg_cid)
+						.expect("pinpad_packmsg_cid utf8"),
+				);
 
-			return CliResult::DisplayStrippedCircuitsPackage { circuit }
-		} else {
-			println!("could not decode circuits. maybe hasn't been set? {:x?}", circuits_encoded);
-		}
-	} else {
-		println!("could not fetch circuits");
-	};
+				return Ok(CliResultOk::DisplayStrippedCircuitsPackage { circuit })
+			} else {
+				println!("could not decode circuits. maybe hasn't been set?");
+			}
+		},
+		Err(_) => println!("could not fetch circuits [1]"),
+	}
 
-	CliResult::None
+	Err(CliError::Default { msg: "could not fetch circuits".to_string() })
 }

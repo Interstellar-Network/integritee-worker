@@ -15,7 +15,7 @@
 
 */
 
-use crate::{benchmark::BenchmarkCommands, Cli, CliResult};
+use crate::{benchmark::BenchmarkCommands, Cli, CliResult, CliResultOk};
 
 #[cfg(feature = "evm")]
 use crate::evm::EvmCommands;
@@ -62,12 +62,12 @@ impl TrustedArgs {
 			TrustedCommands::BaseTrusted(cmd) => cmd.run(cli, self),
 			TrustedCommands::Benchmark(benchmark_commands) => {
 				benchmark_commands.run(cli, self);
-				CliResult::None
+				Ok(CliResultOk::None)
 			},
 			#[cfg(feature = "evm")]
 			TrustedCommands::EvmCommands(evm_commands) => {
 				evm_commands.run(cli, self);
-				CliResult::None
+				Ok(CliResultOk::None)
 			},
 		}
 	}

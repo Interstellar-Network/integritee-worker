@@ -17,7 +17,7 @@
 
 use crate::{
 	command_utils::{get_accountid_from_str, get_chain_api, *},
-	Cli, CliResult,
+	Cli, CliResult, CliResultOk,
 };
 use log::*;
 use my_node_runtime::Balance;
@@ -50,6 +50,6 @@ impl TransferCommand {
 		let balance = result.free;
 		println!("balance for {} is now {}", to_account, balance);
 
-		CliResult::Balance { balance }
+		Ok(CliResultOk::Balance { balance })
 	}
 }

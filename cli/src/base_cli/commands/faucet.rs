@@ -17,7 +17,7 @@
 
 use crate::{
 	command_utils::{get_accountid_from_str, get_chain_api},
-	Cli, CliResult,
+	Cli, CliResult, CliResultOk,
 };
 use my_node_runtime::{BalancesCall, RuntimeCall};
 use sp_keyring::AccountKeyring;
@@ -55,6 +55,6 @@ impl FaucetCommand {
 			nonce += 1;
 		}
 
-		CliResult::None
+		Ok(CliResultOk::None)
 	}
 }
