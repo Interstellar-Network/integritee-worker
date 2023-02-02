@@ -118,7 +118,7 @@ fn new_account(trusted_args: &TrustedArgs) -> CliResult {
 	let key_str = key.public().to_ss58check();
 	println!("{}", key_str);
 
-	Ok(CliResultOk::String { str: key_str })
+	Ok(CliResultOk::PubKeysBase58 { pubkeys_sr25519: Some(vec![key_str]), pubkeys_ed25519: None })
 }
 
 fn list_accounts(trusted_args: &TrustedArgs) -> CliResult {
