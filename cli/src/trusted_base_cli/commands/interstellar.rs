@@ -112,15 +112,11 @@ pub(crate) fn ocw_garble_get_most_recent_circuits_package(
 				&mut res.unwrap_or_default().as_slice(),
 			) {
 				println!(
-					"circuits : message_pgarbled_cid: {:?}, message_packmsg_cid: {:?}, pinpad_pgarbled_cid: {:?}, pinpad_packmsg_cid: {:?}",
+					"circuits : message_pgarbled_cid: {:?}, pinpad_pgarbled_cid: {:?}",
 					std::str::from_utf8(&circuit.message_pgarbled_cid)
 						.expect("message_pgarbled_cid utf8"),
-					std::str::from_utf8(&circuit.message_packmsg_cid)
-						.expect("message_packmsg_cid utf8"),
 					std::str::from_utf8(&circuit.pinpad_pgarbled_cid)
 						.expect("pinpad_pgarbled_cid utf8"),
-					std::str::from_utf8(&circuit.pinpad_packmsg_cid)
-						.expect("pinpad_packmsg_cid utf8"),
 				);
 
 				return Ok(CliResultOk::DisplayStrippedCircuitsPackage { circuit })

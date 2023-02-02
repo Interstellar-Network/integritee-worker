@@ -167,7 +167,7 @@ RESULT=$(${CLIENT} trusted --mrenclave "${MRENCLAVE}" --direct get-circuits-pack
 echo "RESULT: ${RESULT}"
 
 # parse $RESULT to get the IPFS cid
-IPFS_CID=$(echo ${RESULT} | awk -F 'message_pgarbled_cid: ' '{print $2}' | awk -F ', message_packmsg_cid:' '{print $1}')
+IPFS_CID=$(echo ${RESULT} | awk -F 'message_pgarbled_cid: ' '{print $2}' | awk -F ', pinpad_pgarbled_cid:' '{print $1}')
 echo "IPFS_CID: ${IPFS_CID}"
 
 

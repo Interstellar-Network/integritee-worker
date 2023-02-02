@@ -23,7 +23,7 @@ sgx_crypto_helper = { branch = "master", git = "https://github.com/apache/teacla
 ws = { version = "0.9.1", features = ["ssl"] }
 
 # scs / integritee
-my-node-runtime = { package = "integritee-node-runtime", git = "https://github.com/Interstellar-Network/integritee-node.git", branch = "interstellar-m5" }
+my-node-runtime = { package = "integritee-node-runtime", git = "https://github.com/Interstellar-Network/integritee-node.git", branch = "interstellar" }
 pallet-evm = { optional = true, git = "https://github.com/integritee-network/frontier.git", branch = "polkadot-v0.9.36" }
 substrate-api-client = { features = ["ws-client"], git = "https://github.com/scs/substrate-api-client.git", branch = "polkadot-v0.9.36" }
 substrate-client-keystore = { git = "https://github.com/scs/substrate-api-client.git", branch = "polkadot-v0.9.36" }
@@ -53,10 +53,10 @@ itp-types = { path = "../core-primitives/types" }
 itp-utils = { path = "../core-primitives/utils" }
 
 # [interstellar]
-pallet-mobile-registry = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "interstellar-M5" }
-pallet-ocw-circuits = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "interstellar-M5" }
-pallet-ocw-garble = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "interstellar-M5" }
-pallet-tx-validation = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "interstellar-M5" }
+pallet-mobile-registry = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "main" }
+pallet-ocw-circuits = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "main" }
+pallet-ocw-garble = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "main" }
+pallet-tx-validation = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "main" }
 snafu = { version = "0.7", default-features = false }
 
 [features]

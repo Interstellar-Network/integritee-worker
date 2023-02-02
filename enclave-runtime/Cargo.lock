@@ -513,7 +513,7 @@ dependencies = [
 [[package]]
 name = "circuits-storage-common"
 version = "0.1.0"
-source = "git+https://github.com/Interstellar-Network/pallets?branch=interstellar-M5#75c05d92935fe4e709726582cac3063d35d2a49b"
+source = "git+https://github.com/Interstellar-Network/pallets?branch=main#495f09eb7f289fcdb9d7e20af2dd792bc555593e"
 dependencies = [
  "frame-support",
  "parity-scale-codec",
@@ -1439,9 +1439,9 @@ source = "git+https://github.com/apache/incubator-teaclave-sgx-sdk?branch=v1.1.6
 
 [[package]]
 name = "heck"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2540771e65fc8cb83cd6e8a237f70c319bd5c29f78ed1084ba5d50eeac86f7f9"
+checksum = "95505c38b4572b2d910cecb0281560f54b440a19336cbbcb27bf6ce6adc6f5a8"
 
 [[package]]
 name = "hex"
@@ -1472,7 +1472,7 @@ dependencies = [
 [[package]]
 name = "http-grpc-client"
 version = "0.3.0"
-source = "git+https://github.com/Interstellar-Network/rs-common.git?branch=interstellar-M5#73396c7a32b26889da8469843ee4650584e94c6d"
+source = "git+https://github.com/Interstellar-Network/rs-common.git?branch=main#e31c5ec5192fe5fade777e0fefbc586108d607bb"
 dependencies = [
  "base64 0.21.0",
  "bytes 1.4.0",
@@ -1644,7 +1644,7 @@ dependencies = [
 [[package]]
 name = "ipfs-client-http-req"
 version = "0.2.0"
-source = "git+https://github.com/Interstellar-Network/lib-garble-rs.git?branch=initial#f936d5ab865f97d3fffc827cf878922ad267b5b5"
+source = "git+https://github.com/Interstellar-Network/lib-garble-rs.git?branch=main#ba3a530518e43e92ad4e9726beaaa4c338c80e1f"
 dependencies = [
  "http-grpc-client",
  "log",
@@ -2656,7 +2656,7 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 [[package]]
 name = "lib-garble-rs"
 version = "0.2.0"
-source = "git+https://github.com/Interstellar-Network/lib-garble-rs.git?branch=initial#f936d5ab865f97d3fffc827cf878922ad267b5b5"
+source = "git+https://github.com/Interstellar-Network/lib-garble-rs.git?branch=main#ba3a530518e43e92ad4e9726beaaa4c338c80e1f"
 dependencies = [
  "bytes 1.4.0",
  "fancy-garbling",
@@ -3191,7 +3191,7 @@ dependencies = [
 [[package]]
 name = "pallet-mobile-registry"
 version = "4.0.0-dev"
-source = "git+https://github.com/Interstellar-Network/pallets?branch=interstellar-M5#75c05d92935fe4e709726582cac3063d35d2a49b"
+source = "git+https://github.com/Interstellar-Network/pallets?branch=main#495f09eb7f289fcdb9d7e20af2dd792bc555593e"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3204,7 +3204,7 @@ dependencies = [
 [[package]]
 name = "pallet-ocw-circuits"
 version = "4.0.0-dev"
-source = "git+https://github.com/Interstellar-Network/pallets?branch=interstellar-M5#75c05d92935fe4e709726582cac3063d35d2a49b"
+source = "git+https://github.com/Interstellar-Network/pallets?branch=main#495f09eb7f289fcdb9d7e20af2dd792bc555593e"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3225,16 +3225,18 @@ dependencies = [
 [[package]]
 name = "pallet-ocw-garble"
 version = "4.0.0-dev"
-source = "git+https://github.com/Interstellar-Network/pallets?branch=interstellar-M5#75c05d92935fe4e709726582cac3063d35d2a49b"
+source = "git+https://github.com/Interstellar-Network/pallets?branch=main#495f09eb7f289fcdb9d7e20af2dd792bc555593e"
 dependencies = [
  "bytes 1.4.0",
  "circuits-storage-common",
  "frame-support",
  "frame-system",
+ "hex",
  "http-grpc-client",
  "ipfs-client-http-req",
  "lib-garble-rs",
  "log",
+ "pallet-ocw-circuits",
  "pallet-timestamp",
  "pallet-tx-validation",
  "parity-scale-codec",
@@ -3359,7 +3361,7 @@ dependencies = [
 [[package]]
 name = "pallet-tx-registry"
 version = "4.0.0-dev"
-source = "git+https://github.com/Interstellar-Network/pallets?branch=interstellar-M5#75c05d92935fe4e709726582cac3063d35d2a49b"
+source = "git+https://github.com/Interstellar-Network/pallets?branch=main#495f09eb7f289fcdb9d7e20af2dd792bc555593e"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3372,7 +3374,7 @@ dependencies = [
 [[package]]
 name = "pallet-tx-validation"
 version = "4.0.0-dev"
-source = "git+https://github.com/Interstellar-Network/pallets?branch=interstellar-M5#75c05d92935fe4e709726582cac3063d35d2a49b"
+source = "git+https://github.com/Interstellar-Network/pallets?branch=main#495f09eb7f289fcdb9d7e20af2dd792bc555593e"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -5253,7 +5255,7 @@ version = "1.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "digest 0.10.6",
  "static_assertions",
 ]

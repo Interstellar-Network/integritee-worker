@@ -36,7 +36,7 @@ sp-core = { default-features = false, features = ["full_crypto"], git = "https:/
 sp-runtime = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.36" }
 
 # scs / integritee
-my-node-runtime = { package = "integritee-node-runtime", optional = true, git = "https://github.com/Interstellar-Network/integritee-node.git", branch = "interstellar-m5" }
+my-node-runtime = { package = "integritee-node-runtime", optional = true, git = "https://github.com/Interstellar-Network/integritee-node.git", branch = "interstellar" }
 # commit: "upgrade to Polkadot v0.9.36"
 # NOTE: use the same rev as the node for consistency
 # see also https://github.com/integritee-network/worker/blob/master/Cargo.lock
@@ -44,11 +44,11 @@ pallet-parentchain = { default-features = false, git = "https://github.com/integ
 
 
 # [interstellar]
-pallet-mobile-registry = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "interstellar-M5" }
-pallet-ocw-circuits = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "interstellar-M5" }
-pallet-ocw-garble = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "interstellar-M5" }
-pallet-tx-validation = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "interstellar-M5" }
-pallet-tx-registry = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "interstellar-M5" }
+pallet-mobile-registry = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "main" }
+pallet-ocw-circuits = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "main" }
+pallet-ocw-garble = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "main" }
+pallet-tx-validation = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "main" }
+pallet-tx-registry = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "main" }
 
 [dev-dependencies]
 sp-keyring = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.36" }
