@@ -35,7 +35,10 @@
 #
 # Probably b/c of the "bin" dir built locally using sccache
 # Try caching only ~/.cargo/registry/cache cf https://github.com/Swatinem/rust-cache#cache-details
-# - podman build -f build.Dockerfile -t integritee-worker:dev -t ghcr.io/interstellar-network/integritee_service:dev --format docker --build-arg WORKER_MODE_ARG=sidechain --volume ~/.cargo/registry/cache:/root/.cargo/registry/git --volume ~/.cargo/git:/root/.cargo/git --volume $(pwd)/target/release:/root/work/worker/target/release:rw --volume $(pwd)/enclave-runtime/target/release:/root/work/worker/enclave-runtime/target/release:rw .
+# - podman build -f build.Dockerfile -t integritee-worker:dev -t ghcr.io/interstellar-network/integritee_service:dev --format docker --build-arg WORKER_MODE_ARG=sidechain --volume ~/.cargo/registry/cache:/root/work/.cargo/registry/git --volume ~/.cargo/git:/root/work/.cargo/git --volume $(pwd)/target/release:/root/work/worker/target/release:rw --volume $(pwd)/enclave-runtime/target/release:/root/work/worker/enclave-runtime/target/release:rw .
+# - CHECK:
+#	- podman run --rm -it --name integritee_service_dev ghcr.io/interstellar-network/integritee_service:dev --clean-reset -P 2090 -p 9990 -r 3490 -w 2091 -h 4545 run --skip-ra --dev
+#	- podman run --rm -it --name integritee_cli_dev --entrypoint /usr/local/bin/integritee-cli ghcr.io/interstellar-network/integritee_service:dev --help
 
 ### Builder Stage
 ##################################################
@@ -59,6 +62,10 @@ ARG ADDITIONAL_FEATURES_ARG
 ENV ADDITIONAL_FEATURES=$ADDITIONAL_FEATURES_ARG
 
 WORKDIR $HOME/worker
+
+# split toolchain install and COPY, that way we wont redownload the toolchain over and over
+RUN rustup show
+
 COPY . .
 
 RUN make
@@ -153,8 +160,10 @@ COPY --from=builder /lib/x86_64-linux-gnu /lib/x86_64-linux-gnu
 # 	echo 'deb [signed-by=/etc/apt/keyrings/intel-sgx-keyring.asc arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu jammy main' | tee /etc/apt/sources.list.d/intel-sgx.list
 # 	wget -O - https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | tee /etc/apt/keyrings/intel-sgx-keyring.asc > /dev/null
 #  	apt-get update && sudo apt-get install -y libsgx-dcap-ql
-RUN ln -s $(find /usr/lib -type f -name "*sgx_dcap_ql*") /usr/lib/x86_64-linux-gnu/libsgx_dcap_ql.so && \
-    ln -s $(find /usr/lib -type f -name "*sgx_dcap_quoteverify*") /usr/lib/x86_64-linux-gnu/libsgx_dcap_quoteverify.so
+# NOTE: libsgx_dcap_ql.so already exist; no need to overwrite
+#	ln -sf $(find /usr/lib -type f -name "*sgx_dcap_ql*") /usr/lib/x86_64-linux-gnu/libsgx_dcap_ql.so
+RUN find /usr/lib -type f -name "*sgx_dcap_quoteverify*" && \
+	ln -sf $(find /usr/lib -type f -name "*sgx_dcap_quoteverify*") /usr/lib/x86_64-linux-gnu/libsgx_dcap_quoteverify.so
 
 RUN touch spid.txt key.txt
 RUN chmod +x /usr/local/bin/integritee-service

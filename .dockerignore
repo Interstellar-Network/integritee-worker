@@ -1,13 +1,35 @@
-.git
-.githooks
-.github
-.idea
-ci/
-docker/
-docs/
-local-setup/
-scripts/
-target/
-tmp/
-*.Dockerfile
-Dockerfile
+# ignore everything
+# (that helps quite a lot when rebuilding multiple times; else COPY is different and we rebuild all...)
+*
+
+# allow list
+!/app-libs/
+# MUST have a /bin/ dir else: "Failed to open file "bin/enclave.signed.so"."
+!/bin/
+/bin/*
+!/cli/src/
+!/cli/Cargo.toml
+!/core/
+!/core-primitives/
+!/enclave-runtime/src/
+!/enclave-runtime/Cargo.lock
+!/enclave-runtime/Cargo.toml
+!/enclave-runtime/Enclave_private.pem
+!/enclave-runtime/Enclave.config.production.xml
+!/enclave-runtime/Enclave.config.xml
+!/enclave-runtime/Enclave.edl
+!/enclave-runtime/Enclave.lds
+!/enclave-runtime/Makefile
+!/enclave-runtime/rust-toolchain.toml
+!/enclave-runtime/rustfmt.toml
+!/enclave-runtime/x86_64-unknown-linux-sgx.json
+# else: "error: could not find native static library `Enclave_u`, perhaps an -L flag is missing?"
+!/lib/
+!/rust-sgx-sdk/
+!/service/
+!/sidechain/
+!/Cargo.lock
+!/Cargo.toml
+!/extract_identity
+!/Makefile
+!/rust-toolchain.toml
