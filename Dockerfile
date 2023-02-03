@@ -1,5 +1,9 @@
 ################################################################################
 # [interstellar]
+# DEPRECATED: not used by https://github.com/integritee-network/worker ??
+# And internally we CAN NOT compile outside container on Ubuntu 22.04 and deploy in SGX container
+# based on Ubuntu 20.04 b/c of libssl versions.
+#
 # NOTE: this is NOT compiling; "make" MUST have been run beforehand!
 
 # 2 containers to build:
@@ -8,7 +12,7 @@
 # 	to publish:
 # 	podman tag ghcr.io/interstellar-network/integritee_service:dev ghcr.io/interstellar-network/integritee_service:vXXX
 # 	podman push ghcr.io/interstellar-network/integritee_service:vXXX
-# - TODO? one with bin/integritee-cli:
+# - one with bin/integritee-cli:
 # 	podman build --format docker -f Dockerfile --build-arg=BINARY_FILE=integritee-cli -t ghcr.io/interstellar-network/integritee_cli:dev .
 #  	to publish:
 # 	podman tag ghcr.io/interstellar-network/integritee_cli:dev ghcr.io/interstellar-network/integritee_cli:vXXX
