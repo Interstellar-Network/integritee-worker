@@ -20,13 +20,15 @@ use crate::{
 	trusted_command_utils::{get_identifiers, get_pair_from_str},
 	trusted_commands::TrustedArgs,
 	trusted_operation::perform_trusted_operation,
-	Cli,
+	Cli, CliResult, CliResultOk,
 };
 use codec::Decode;
-use ita_stf::{Index, KeyPair, TrustedCall, TrustedGetter, TrustedOperation};
+use ita_stf::{Index, TrustedCall, TrustedGetter, TrustedOperation};
+use itp_stf_primitives::types::KeyPair;
 use log::*;
 use my_node_runtime::Balance;
 use sp_core::{crypto::Ss58Codec, Pair};
+use std::boxed::Box;
 
 #[derive(Parser)]
 pub struct SetBalanceCommand {
@@ -38,7 +40,7 @@ pub struct SetBalanceCommand {
 }
 
 impl SetBalanceCommand {
-	pub(crate) fn run(&self, cli: &Cli, trusted_args: &TrustedArgs) {
+	pub(crate) fn run(&self, cli: &Cli, trusted_args: &TrustedArgs) -> CliResult {
 		let who = get_pair_from_str(trusted_args, &self.account);
 		let signer = get_pair_from_str(trusted_args, "//Alice");
 		info!("account ss58 is {}", who.public().to_ss58check());
@@ -53,8 +55,8 @@ impl SetBalanceCommand {
 			self.amount,
 			self.amount,
 		)
-		.sign(&KeyPair::Sr25519(signer), nonce, &mrenclave, &shard)
+		.sign(&KeyPair::Sr25519(Box::new(signer)), nonce, &mrenclave, &shard)
 		.into_trusted_operation(trusted_args.direct);
-		let _ = perform_trusted_operation(cli, trusted_args, &top);
+		Ok(perform_trusted_operation(cli, trusted_args, &top).map(|_| CliResultOk::None)?)
 	}
 }

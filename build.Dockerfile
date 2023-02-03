@@ -15,9 +15,31 @@
 # This is a multi-stage docker file, where the first stage is used
 # for building and the second deploys the built application.
 
+################################################################################
+# [interstellar]
+# To be able to deploy on an Ubuntu20.04 base image(ie "integritee/integritee-dev:0.1.10")
+# We MUST build inside a container[if the local host is eg ubuntu 22.04] else it FAILS with
+# 	STEP 10/15: RUN if [[ "x$BINARY_FILE" != "xintegritee-cli" ]] ; then ./integritee init-shard; fi
+# 	./integritee: error while loading shared libraries: libssl.so.3: cannot open shared object file: No such file or directory
+#
+# - cf https://github.com/integritee-network/worker/blob/master/docker/README.md#how-to-run-the-multi-validateer-docker-setup
+# - make clean && rm -rf target && rm -rf enclave-runtime/target/
+# - mkdir -p target/release && mkdir -p enclave-runtime/target/release
+# 	NOTE: "--format docker" else "WARN[0001] SHELL is not supported for OCI image format, [/bin/bash -c] will be ignored. Must use `docker` format"
+#	NOTE2: use podman that way we can use --volume at build time and not start from scratch every build
+# TODO? --volume ~/.cargo:/root/.cargo:rw but FAIL with below ???
+# 	info: installing component 'rustfmt'
+# 	error: failed to run `rustc` to learn about target-specific information
+# 	Caused by:
+#   could not execute process `/usr/local/bin/sccache rustc - --crate-name ___ --print=file-names --crate-type bin --crate-type rlib --crate-type dylib --crate-type cdylib --crate-type staticlib --crate-type proc-macro --print=sysroot --print=cfg` (never executed)
+#
+# Probably b/c of the "bin" dir built locally using sccache
+# Try caching only ~/.cargo/registry/cache cf https://github.com/Swatinem/rust-cache#cache-details
+# - podman build -f build.Dockerfile -t integritee-worker:dev -t ghcr.io/interstellar-network/integritee_service:dev --format docker --build-arg WORKER_MODE_ARG=sidechain --volume ~/.cargo/registry/cache:/root/.cargo/registry/git --volume ~/.cargo/git:/root/.cargo/git --volume $(pwd)/target/release:/root/work/worker/target/release:rw --volume $(pwd)/enclave-runtime/target/release:/root/work/worker/enclave-runtime/target/release:rw .
+
 ### Builder Stage
 ##################################################
-FROM integritee/integritee-dev:0.1.9 AS builder
+FROM integritee/integritee-dev:0.1.10 AS builder
 LABEL maintainer="zoltan@integritee.network"
 
 # set environment variables
@@ -30,20 +52,6 @@ ENV SGX_MODE SW
 
 ENV HOME=/root/work
 
-# copy pasted this block from below "FROM integritee/integritee-dev:0.1.9 AS cached-builder" and then mount host's <-> SCCACHE_DIR
-# install prebuilt binary, cf prepare_rust/action.yml
-# RUN rustup default stable && cargo install sccache --root /usr/local/cargo
-# ENV PATH "$PATH:/usr/local/cargo/bin"
-RUN mkdir /tmp/sscache && \
-	cd /tmp/sscache && \
-	wget -c https://github.com/mozilla/sccache/releases/download/v0.3.0/sccache-v0.3.0-x86_64-unknown-linux-musl.tar.gz -O - | tar -xz --strip-components 1 && \
-	chmod +x sccache && \
-	mv sccache /usr/local/bin/sccache && \
-	sccache --version
-ENV SCCACHE_CACHE_SIZE="3G"
-ENV SCCACHE_DIR=$HOME/.cache/sccache
-ENV RUSTC_WRAPPER="/usr/local/bin/sccache"
-
 ARG WORKER_MODE_ARG
 ENV WORKER_MODE=$WORKER_MODE_ARG
 
@@ -53,17 +61,18 @@ ENV ADDITIONAL_FEATURES=$ADDITIONAL_FEATURES_ARG
 WORKDIR $HOME/worker
 COPY . .
 
-RUN (make && echo "make OK !" && sccache --show-stats) || (sccache --show-stats && echo "error: make" && exit 1)
+RUN make
 
-RUN (cargo test --release && echo "cargo test --release OK !" && sccache --show-stats) || (sccache --show-stats && echo "error: cargo test --release" && exit 1)
+RUN cargo test --release
 
 
+# [interstellar] NOTE: "cached-builder" is NOT used???
 ### Cached Builder Stage (WIP)
 ##################################################
 # A builder stage that uses sccache to speed up local builds with docker
 # Installation and setup of sccache should be moved to the integritee-dev image, so we don't
 # always need to compile and install sccache on CI (where we have no caching so far).
-FROM integritee/integritee-dev:0.1.9 AS cached-builder
+FROM integritee/integritee-dev:0.1.10 AS cached-builder
 LABEL maintainer="zoltan@integritee.network"
 
 # set environment variables
@@ -137,6 +146,15 @@ WORKDIR /usr/local/bin
 
 COPY --from=builder /opt/sgxsdk/lib64 /opt/sgxsdk/lib64
 COPY --from=builder /root/work/worker/bin/* ./
+COPY --from=builder /lib/x86_64-linux-gnu /lib/x86_64-linux-gnu
+
+# cf core-primitives/enclave-api/build.rs and service/build.rs
+# and /gh-actions/install-sgx-sdk/action.yml
+# 	echo 'deb [signed-by=/etc/apt/keyrings/intel-sgx-keyring.asc arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu jammy main' | tee /etc/apt/sources.list.d/intel-sgx.list
+# 	wget -O - https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | tee /etc/apt/keyrings/intel-sgx-keyring.asc > /dev/null
+#  	apt-get update && sudo apt-get install -y libsgx-dcap-ql
+RUN ln -s $(find /usr/lib -type f -name "*sgx_dcap_ql*") /usr/lib/x86_64-linux-gnu/libsgx_dcap_ql.so && \
+    ln -s $(find /usr/lib -type f -name "*sgx_dcap_quoteverify*") /usr/lib/x86_64-linux-gnu/libsgx_dcap_quoteverify.so
 
 RUN touch spid.txt key.txt
 RUN chmod +x /usr/local/bin/integritee-service

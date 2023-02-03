@@ -35,7 +35,6 @@ use its_consensus_common::Error as ConsensusError;
 use its_primitives::traits::{
 	BlockData, Header as HeaderTrait, ShardIdentifierFor, SignedBlock as SignedBlockTrait,
 };
-use its_state::SidechainDB;
 use its_validateer_fetch::ValidateerFetch;
 use log::*;
 use sp_core::Pair;
@@ -52,7 +51,6 @@ pub struct BlockImporter<
 	ParentchainBlock,
 	SignedSidechainBlock,
 	OCallApi,
-	SidechainState,
 	StateHandler,
 	StateKeyRepository,
 	TopPoolAuthor,
@@ -63,7 +61,7 @@ pub struct BlockImporter<
 	top_pool_author: Arc<TopPoolAuthor>,
 	parentchain_block_importer: Arc<ParentchainBlockImporter>,
 	ocall_api: Arc<OCallApi>,
-	_phantom: PhantomData<(Authority, ParentchainBlock, SignedSidechainBlock, SidechainState)>,
+	_phantom: PhantomData<(Authority, ParentchainBlock, SignedSidechainBlock)>,
 }
 
 impl<
@@ -71,7 +69,6 @@ impl<
 		ParentchainBlock,
 		SignedSidechainBlock,
 		OCallApi,
-		SidechainState,
 		StateHandler,
 		StateKeyRepository,
 		TopPoolAuthor,
@@ -82,7 +79,6 @@ impl<
 		ParentchainBlock,
 		SignedSidechainBlock,
 		OCallApi,
-		SidechainState,
 		StateHandler,
 		StateKeyRepository,
 		TopPoolAuthor,
@@ -104,8 +100,9 @@ impl<
 	StateKeyRepository: AccessKey,
 	<StateKeyRepository as AccessKey>::KeyType: StateCrypto,
 	TopPoolAuthor: AuthorApi<H256, H256> + OnBlockImported<Hash = H256>,
-	ParentchainBlockImporter:
-		TriggerParentchainBlockImport<SignedParentchainBlock<ParentchainBlock>> + Send + Sync,
+	ParentchainBlockImporter: TriggerParentchainBlockImport<SignedBlockType = SignedParentchainBlock<ParentchainBlock>>
+		+ Send
+		+ Sync,
 {
 	pub fn new(
 		state_handler: Arc<StateHandler>,
@@ -139,13 +136,16 @@ impl<
 			.map(|hash| (TrustedOperationOrHash::Hash(*hash), true))
 			.collect();
 
-		let calls_failed_to_remove = self
+		let _calls_failed_to_remove = self
 			.top_pool_author
 			.remove_calls_from_pool(sidechain_block.header().shard_id(), executed_operations);
 
-		for call_failed_to_remove in calls_failed_to_remove {
-			error!("Could not remove call {:?} from top pool", call_failed_to_remove);
-		}
+		// In case the executed call did not originate in our own TOP pool, we will not be able to remove it from our TOP pool.
+		// So this error will occur frequently, without it meaning that something really went wrong.
+		// TODO: Once the TOP pools are synchronized, we will want this check again!
+		// for call_failed_to_remove in _calls_failed_to_remove {
+		// 	error!("Could not remove call {:?} from top pool", call_failed_to_remove);
+		// }
 	}
 }
 
@@ -164,7 +164,6 @@ impl<
 		ParentchainBlock,
 		SignedSidechainBlock,
 		OCallApi,
-		SidechainDB<SignedSidechainBlock::Block, SgxExternalities>,
 		StateHandler,
 		StateKeyRepository,
 		TopPoolAuthor,
@@ -186,22 +185,23 @@ impl<
 	StateKeyRepository: AccessKey,
 	<StateKeyRepository as AccessKey>::KeyType: StateCrypto,
 	TopPoolAuthor: AuthorApi<H256, H256> + OnBlockImported<Hash = H256>,
-	ParentchainBlockImporter:
-		TriggerParentchainBlockImport<SignedParentchainBlock<ParentchainBlock>> + Send + Sync,
+	ParentchainBlockImporter: TriggerParentchainBlockImport<SignedBlockType = SignedParentchainBlock<ParentchainBlock>>
+		+ Send
+		+ Sync,
 {
-	type Verifier = AuraVerifier<
-		Authority,
-		ParentchainBlock,
-		SignedSidechainBlock,
-		SidechainDB<SignedSidechainBlock::Block, SgxExternalities>,
-		OCallApi,
-	>;
-	type SidechainState = SidechainDB<SignedSidechainBlock::Block, SgxExternalities>;
+	type Verifier = AuraVerifier<Authority, ParentchainBlock, SignedSidechainBlock, OCallApi>;
+	type SidechainState = SgxExternalities;
 	type StateCrypto = <StateKeyRepository as AccessKey>::KeyType;
 	type Context = OCallApi;
 
-	fn verifier(&self, state: Self::SidechainState) -> Self::Verifier {
-		AuraVerifier::<Authority, ParentchainBlock, _, _, _>::new(SLOT_DURATION, state)
+	fn verifier(
+		&self,
+		maybe_last_sidechain_block: Option<SignedSidechainBlock::Block>,
+	) -> Self::Verifier {
+		AuraVerifier::<Authority, ParentchainBlock, _, _>::new(
+			SLOT_DURATION,
+			maybe_last_sidechain_block,
+		)
 	}
 
 	fn apply_state_update<F>(
@@ -217,10 +217,12 @@ impl<
 			.load_for_mutation(shard)
 			.map_err(|e| ConsensusError::Other(format!("{:?}", e).into()))?;
 
-		let updated_state = mutating_function(Self::SidechainState::new(state))?;
+		// We load a copy of the state and apply the update. In case the update fails, we don't write
+		// the state back to the state handler, and thus guaranteeing state integrity.
+		let updated_state = mutating_function(state)?;
 
 		self.state_handler
-			.write_after_mutation(updated_state.ext, write_lock, shard)
+			.write_after_mutation(updated_state, write_lock, shard)
 			.map_err(|e| ConsensusError::Other(format!("{:?}", e).into()))?;
 
 		Ok(())
@@ -232,13 +234,11 @@ impl<
 		verifying_function: F,
 	) -> Result<SignedSidechainBlock, ConsensusError>
 	where
-		F: FnOnce(Self::SidechainState) -> Result<SignedSidechainBlock, ConsensusError>,
+		F: FnOnce(&Self::SidechainState) -> Result<SignedSidechainBlock, ConsensusError>,
 	{
-		let state = self
-			.state_handler
-			.load(shard)
-			.map_err(|e| ConsensusError::Other(format!("{:?}", e).into()))?;
-		verifying_function(Self::SidechainState::new(state))
+		self.state_handler
+			.execute_on_current(shard, |state, _| verifying_function(state))
+			.map_err(|e| ConsensusError::Other(format!("{:?}", e).into()))?
 	}
 
 	fn state_key(&self) -> Result<Self::StateCrypto, ConsensusError> {

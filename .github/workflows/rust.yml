@@ -8,203 +8,60 @@ env:
   BUILD_CONTAINER_NAME: integritee_worker_enclave_test
 
 jobs:
-  # TODO split test and lint; but that REQUIRE caching else recompile from scratch in between
-  rust:
+  ##########################################################################
+  ##########################################################################
+  cargo_test:
     runs-on: ubuntu-latest
 
-    # strategy:
-    #   matrix:
-    #     include:
-    #       - flavor_id: sidechain
-    #         mode: sidechain
-
     steps:
-      # # Free up some disk space
-      # # https://github.com/orgs/community/discussions/25678
-      # #   -> https://github.com/apache/flink/blob/master/tools/azure-pipelines/free_disk_space.sh
-      # # https://github.com/actions/runner-images/issues/2840
-      # # TODO? https://github.com/actions/runner-images/issues/2875
-      # # - name: Free up some disk space
-      # #   run: |
-      # #     echo "Listing 100 largest packages"
-      # #     dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 100
-      # #     df -h
-      # #     echo "Removing large packages"
-      # #     sudo apt-get remove -y '^dotnet-.*'
-      # #     sudo apt-get remove -y '^llvm-.*'
-      # #     sudo apt-get remove -y 'php.*'
-      # #     sudo apt-get remove -y '^mongodb-.*'
-      # #     sudo apt-get remove -y '^mysql-.*'
-      # #     sudo apt-get remove -y azure-cli google-cloud-sdk hhvm google-chrome-stable firefox powershell mono-devel libgl1-mesa-dri
-      # #     sudo apt-get autoremove -y
-      # #     sudo apt-get clean
-      # #     df -h
-      # #     echo "Removing large directories"
-
-      # #     sudo rm -rf /usr/share/dotnet/
-      # #     sudo rm -rf /usr/local/graalvm/
-      # #     sudo rm -rf /usr/local/.ghcup/
-      # #     sudo rm -rf /usr/local/share/powershell
-      # #     sudo rm -rf /usr/local/share/chromium
-      # #     sudo rm -rf /usr/local/lib/android
-      # #     sudo rm -rf /usr/local/lib/node_modules
-      # #     df -h
-      # #   shell: bash
-      # - name: Free Disk Space (Ubuntu)
-      #   uses: jlumbroso/free-disk-space@main
-      #   with:
-      #     # even with 50=GB free we get "no space left"; so try without "tool-cache"
-      #     # "this might remove tools that are actually needed,
-      #     # if set to "true" but frees about 6 GB"
-      #     tool-cache: false
-
-      #     # "all of these default to true, but feel free to set to
-      #     # "false" if necessary for your workflow"
-      #     android: true
-      #     dotnet: true
-      #     haskell: true
-      #     large-packages: true
-      #     swap-storage: true
-
-      - uses: Interstellar-Network/gh-actions/prepare@rust-next
+      - uses: Interstellar-Network/gh-actions/prepare@v3-dev
         with:
           ssh_key_input: ${{ secrets.SSH_KEY_MACHINE_USER_INTERSTELLAR_CI }}
           install_cmake_and_ninja: false
           install_ccache: true
           install_conan: false
 
-      ##########################################################################
-
-      - uses: Interstellar-Network/gh-actions/prepare_rust@rust-next
+      - uses: Interstellar-Network/gh-actions/prepare_rust@v3-dev
         with:
-          skip_action_toolchain: "true"
-
-      # ##########################################################################
-      # cf next block comments to see why it fails
-      # # cf https://github.com/integritee-network/worker/blob/sdk-v0.10.0-polkadot-v0.9.27/.github/workflows/build_and_test.yml
-
-      # # - name: Set up Docker Buildx
-      # #   uses: docker/setup-buildx-action@v2
-      # #   with:
-      # #     buildkitd-flags: --debug
-      # #     driver: docker-container
-
-      # # TODO install podman? NOTE: the Github machines already have podman; but an oldish one(3.X vs 4.4 most recent)
-      # # FAIL: this tries to install "podman 4:4.2.0-0ubuntu22.04+obs33.1" from https://download.opensuse.org/repositories/devel:kubic:libcontainers:unstable/xUbuntu_20.04
-      # #   -> " podman: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.33' not found (required by podman)"
-      # #   https://build.opensuse.org/package/show/devel:kubic:libcontainers:unstable/podman
-      # # https://github.com/containers/podman.io/blob/main/getting-started/installation.md#ubuntu
-      # # - name: install podman
-      # #   run: |
-      # #     sudo apt-get remove podman
-      # #     sudo mkdir -p /etc/apt/keyrings
-      # #     curl -fsSL https://download.opensuse.org/repositories/devel:kubic:libcontainers:unstable/xUbuntu_$(lsb_release -rs)/Release.key \
-      # #       | gpg --dearmor \
-      # #       | sudo tee /etc/apt/keyrings/devel_kubic_libcontainers_unstable.gpg > /dev/null
-      # #     echo \
-      # #       "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/devel_kubic_libcontainers_unstable.gpg]\
-      # #         https://download.opensuse.org/repositories/devel:kubic:libcontainers:unstable/xUbuntu_$(lsb_release -rs)/ /" \
-      # #       | sudo tee /etc/apt/sources.list.d/devel:kubic:libcontainers:unstable.list > /dev/null
-      # #     sudo apt-get update -qq
-      # #     sudo apt-get install podman
-      # #   shell: bash
-
-      # # TODO all dockers: mount target/ inside container[to be able to use GH's cache]
-
-      # # We need to create the dir that are about to be mounted as "--volumes" else
-      # #   Error: stat /home/runner/work/integritee-worker/integritee-worker/target: no such file or directory
-      # # - name: Create target/ directories for podman volumes
-      # #   run: |
-      # #     mkdir -p $(pwd)/target
-      # #     mkdir -p $(pwd)/enclave-runtime/target
-      # #   shell: bash
-
-      # # Stop sccache just in case
-      # #   MAYBE the cause of https://github.com/mozilla/sccache/issues/256
-      # - name: Stop sccache just in case
-      #   run: |
-      #     sccache --stop-server
-      #   shell: bash
-
-      # - name: Build Worker & Run Cargo Test
-      #   # env:
-      #   #   DOCKER_BUILDKIT: 1
-      #   run: >
-      #     podman build -t integritee-worker-${{ matrix.flavor_id }}-${{ github.sha }}
-      #     --target deployed-worker
-      #     --build-arg WORKER_MODE_ARG=${{ matrix.mode }} --build-arg ADDITIONAL_FEATURES_ARG=${{ matrix.additional_features }}
-      #     --volume ~/.cargo:/root/work/.cargo:rw
-      #     --volume ~/.cache/sccache:/root/work/.cache/sccache:rw
-      #     -f build.Dockerfile .
-
-      # - name: Build CLI client
-      #   # env:
-      #   #   DOCKER_BUILDKIT: 1
-      #   run: >
-      #     podman build -t integritee-cli-client-${{ matrix.flavor_id }}-${{ github.sha }}
-      #     --target deployed-client
-      #     --build-arg WORKER_MODE_ARG=${{ matrix.mode }} --build-arg ADDITIONAL_FEATURES_ARG=${{ matrix.additional_features }}
-      #     --volume ~/.cargo:/root/work/.cargo:rw
-      #     --volume ~/.cache/sccache:/root/work/.cache/sccache:rw
-      #     -f build.Dockerfile .
-
-      # - run: podman images --all
-
-      # - name: Test Enclave # cargo test is not supported in the enclave, see: https://github.com/apache/incubator-teaclave-sgx-sdk/issues/232
-      #   run: podman run --name ${{ env.BUILD_CONTAINER_NAME }} integritee-worker-${{ matrix.flavor_id }}-${{ github.sha }} test --all
+          use_toolchain_toml: "true"
+          toolchain_components: ""
 
       ##########################################################################
-      # SGX inside container is always causing "no space left on device"
-      # even when using jlumbroso/free-disk-space@main which causes 50+gb to be available
-      # when starting the job !?
-      #   -> So for now we install SGX manually
-      #      As a bonus we can skip the whole podman/docker, sccache volume caching in container, etc
 
-      # cf https://github.com/apache/incubator-teaclave-sgx-sdk/blob/master/dockerfile/Dockerfile.2004.nightly
-      # and related files in that repo
-      # NOTE: we install to "/opt/intel" instead of "/opt"
-      # NOTE2: we CAN NOT use eg "echo "source /opt/intel/sgxsdk/environment" >> $GITHUB_ENV"
-      # so do it manually
-      #
-      # TODO? apt update && apt install -y unzip lsb-release debhelper reprepro autoconf automake bison build-essential curl dpkg-dev expect flex git git-core gnupg kmod libboost-system-dev libboost-thread-dev libcurl4-openssl-dev libiptcdata0-dev libjsoncpp-dev liblog4cpp5-dev libprotobuf-dev libssl-dev libtool libxml2-dev ocaml ocamlbuild pkg-config protobuf-compiler python texinfo uuid-dev vim wget software-properties-common
-      - name: Install Intel SGX
-        run: |
-          curl -o sdk.sh $SDK_URL
-          chmod a+x ./sdk.sh
-          echo -e 'no\n/opt/intel' | sudo ./sdk.sh
-          cat /opt/intel/sgxsdk/environment
-          echo "SGX_SDK=/opt/intel/sgxsdk" >> $GITHUB_ENV
-          export SGX_SDK=/opt/intel/sgxsdk
-          echo "PATH=$PATH:$SGX_SDK/bin:$SGX_SDK/bin/x64" >> $GITHUB_ENV
-          echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH:$SGX_SDK/pkgconfig" >> $GITHUB_ENV
-          echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$SGX_SDK/sdk_libs" >> $GITHUB_ENV
-          rm ./sdk.sh
+      - uses: Interstellar-Network/gh-actions/install-sgx-sdk@v3-dev
 
-          wget https://download.01.org/intel-sgx/sgx-linux/2.17/as.ld.objdump.r4.tar.gz
-          tar xzf as.ld.objdump.r4.tar.gz
-          sudo cp -r external/toolset/$BINUTILS_DIST/* /usr/bin/
-          rm -rf ./external ./as.ld.objdump.r4.tar.gz
-
-          echo "SGX_MODE=SW" >> $GITHUB_ENV
-        env:
-          # NOTE: DO NOT need the vars related to "Sixth, PSW"
-          BINUTILS_DIST: "ubuntu20.04"
-          SDK_DIST: "INTEL_BUILT"
-          SDK_URL: "https://download.01.org/intel-sgx/sgx-linux/2.17.1/distro/ubuntu20.04-server/sgx_linux_x64_sdk_2.17.101.1.bin"
-        shell: bash
-
-      # TODO? --features sidechain (for cargo test and/or rust-lint@rust-next action?)
-
+      # NOTE: we CAN NOT run "cargo test --release" without "make"
+      # ELSE: "error: could not find native static library `Enclave_u`, perhaps an -L flag is missing?"
       - name: Make and Test
         run: |
           make
-          cargo test --release
           cd bin/ && touch spid.txt key.txt && ./integritee-service test --all
+          cargo test --release
+
+  ##########################################################################
+  ##########################################################################
+  cargo_lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: Interstellar-Network/gh-actions/prepare@v3-dev
+        with:
+          ssh_key_input: ${{ secrets.SSH_KEY_MACHINE_USER_INTERSTELLAR_CI }}
+          install_cmake_and_ninja: false
+          install_ccache: true
+          install_conan: false
+
+      - uses: Interstellar-Network/gh-actions/prepare_rust@v3-dev
+        with:
+          use_toolchain_toml: "true"
+          toolchain_components: "rustfmt,clippy"
 
       ##########################################################################
 
+      - uses: Interstellar-Network/gh-actions/install-sgx-sdk@v3-dev
+
       # TODO? do we need to "cd enclave/"[we can probably consider enclave/ as internal implementation details?]
-      - uses: Interstellar-Network/gh-actions/rust-lint@rust-next
+      - uses: Interstellar-Network/gh-actions/rust-lint@v3-dev
         with:
           # - clippy: pass --release b/c make always compile in release; so might as well avoid recompiling
           #   from scratch just for the linters.

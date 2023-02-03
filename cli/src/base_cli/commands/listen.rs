@@ -15,11 +15,11 @@
 
 */
 
-use crate::{command_utils::get_chain_api, Cli};
+use crate::{command_utils::get_chain_api, Cli, CliResult, CliResultOk};
 use base58::ToBase58;
 use codec::{Decode, Encode};
 use log::*;
-use my_node_runtime::{Event, Hash};
+use my_node_runtime::{Hash, RuntimeEvent};
 use std::{sync::mpsc::channel, vec::Vec};
 use substrate_api_client::utils::FromHexString;
 
@@ -35,7 +35,7 @@ pub struct ListenCommand {
 }
 
 impl ListenCommand {
-	pub(crate) fn run(&self, cli: &Cli) {
+	pub(crate) fn run(&self, cli: &Cli) -> CliResult {
 		println!("{:?} {:?}", self.events, self.blocks);
 		let api = get_chain_api(cli);
 		info!("Subscribing to events");
@@ -46,25 +46,26 @@ impl ListenCommand {
 		loop {
 			if let Some(e) = self.events {
 				if count >= e {
-					return
+					return Ok(CliResultOk::None)
 				}
 			};
 			if let Some(b) = self.blocks {
 				if blocks >= b {
-					return
+					return Ok(CliResultOk::None)
 				}
 			};
 			let event_str = events_out.recv().unwrap();
 			let _unhex = Vec::from_hex(event_str).unwrap();
 			let mut _er_enc = _unhex.as_slice();
-			let _events = Vec::<frame_system::EventRecord<Event, Hash>>::decode(&mut _er_enc);
+			let _events =
+				Vec::<frame_system::EventRecord<RuntimeEvent, Hash>>::decode(&mut _er_enc);
 			blocks += 1;
 			match _events {
 				Ok(evts) =>
 					for evr in &evts {
 						println!("decoded: phase {:?} event {:?}", evr.phase, evr.event);
 						match &evr.event {
-							Event::Balances(be) => {
+							RuntimeEvent::Balances(be) => {
 								println!(">>>>>>>>>> balances event: {:?}", be);
 								match &be {
 									pallet_balances::Event::Transfer { from, to, amount } => {
@@ -77,7 +78,7 @@ impl ListenCommand {
 									},
 								}
 							},
-							Event::Teerex(ee) => {
+							RuntimeEvent::Teerex(ee) => {
 								println!(">>>>>>>>>> integritee event: {:?}", ee);
 								count += 1;
 								match &ee {
@@ -107,10 +108,11 @@ impl ListenCommand {
 										accountid,
 										block_hash,
 										merkle_root,
+										block_number,
 									) => {
 										println!(
-											"ProcessedParentchainBlock from {} with hash {:?} and merkle root {:?}",
-											accountid, block_hash, merkle_root
+											"ProcessedParentchainBlock from {} with hash {:?}, number {} and merkle root {:?}",
+											accountid, block_hash, merkle_root, block_number
 										);
 									},
 									my_node_runtime::pallet_teerex::Event::ShieldFunds(
@@ -126,7 +128,7 @@ impl ListenCommand {
 									_ => debug!("ignoring unsupported teerex event: {:?}", ee),
 								}
 							},
-							Event::Sidechain(ee) => {
+							RuntimeEvent::Sidechain(ee) => {
 								count += 1;
 								match &ee {
 									my_node_runtime::pallet_sidechain::Event::ProposedSidechainBlock(

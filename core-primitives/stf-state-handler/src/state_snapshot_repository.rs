@@ -26,7 +26,7 @@ use crate::{
 use core::ops::RangeBounds;
 use itp_types::ShardIdentifier;
 use log::*;
-use std::{collections::VecDeque, fmt::Debug, format, marker::PhantomData, sync::Arc, vec::Vec};
+use std::{collections::VecDeque, fmt::Debug, format, sync::Arc, vec::Vec};
 
 /// Trait for versioned state access. Manages history of state snapshots.
 pub trait VersionedStateAccess {
@@ -40,8 +40,9 @@ pub trait VersionedStateAccess {
 	fn update(
 		&mut self,
 		shard_identifier: &ShardIdentifier,
-		state: Self::StateType,
-	) -> Result<Self::HashType>;
+		state: &Self::StateType,
+		state_hash: Self::HashType,
+	) -> Result<()>;
 
 	/// Reverts the state of a given shard to a state version identified by a state hash.
 	fn revert_to(
@@ -51,8 +52,13 @@ pub trait VersionedStateAccess {
 	) -> Result<Self::StateType>;
 
 	/// Initialize a new shard.
-	fn initialize_new_shard(&mut self, shard_identifier: ShardIdentifier)
-		-> Result<Self::HashType>;
+	///
+	/// If the shard already exists, it will re-initialize it.
+	fn initialize_new_shard(
+		&mut self,
+		shard_identifier: ShardIdentifier,
+		state: &Self::StateType,
+	) -> Result<Self::HashType>;
 
 	/// Checks if a shard for a given identifier exists.
 	fn shard_exists(&self, shard_identifier: &ShardIdentifier) -> bool;
@@ -66,17 +72,22 @@ pub trait VersionedStateAccess {
 /// Keeps versions of state snapshots, cycles them in a fixed-size circular buffer.
 /// Creates a state snapshot for each write/update operation. Allows reverting to a specific snapshot,
 /// identified by a state hash. Snapshot files names includes a timestamp to be unique.
-pub struct StateSnapshotRepository<FileIo, State, HashType> {
+pub struct StateSnapshotRepository<FileIo>
+where
+	FileIo: StateFileIo,
+	<FileIo as StateFileIo>::HashType: Copy + Eq + Debug,
+	<FileIo as StateFileIo>::StateType: Clone,
+{
 	file_io: Arc<FileIo>,
 	snapshot_history_cache_size: usize,
-	snapshot_history: SnapshotHistory<HashType>,
-	phantom_data: PhantomData<State>,
+	snapshot_history: SnapshotHistory<FileIo::HashType>,
 }
 
-impl<FileIo, State, HashType> StateSnapshotRepository<FileIo, State, HashType>
+impl<FileIo> StateSnapshotRepository<FileIo>
 where
-	FileIo: StateFileIo<StateType = State, HashType = HashType>,
-	HashType: Copy + Eq + Debug,
+	FileIo: StateFileIo,
+	<FileIo as StateFileIo>::HashType: Copy + Eq + Debug,
+	<FileIo as StateFileIo>::StateType: Clone,
 {
 	/// Constructor, initialized with no shards or snapshot history.
 	pub fn empty(file_io: Arc<FileIo>, snapshot_history_cache_size: usize) -> Result<Self> {
@@ -89,42 +100,37 @@ where
 	pub(crate) fn new(
 		file_io: Arc<FileIo>,
 		snapshot_history_cache_size: usize,
-		snapshot_history: SnapshotHistory<HashType>,
+		snapshot_history: SnapshotHistory<FileIo::HashType>,
 	) -> Result<Self> {
 		if snapshot_history_cache_size == 0usize {
 			return Err(Error::ZeroCacheSize)
 		}
 
-		Ok(StateSnapshotRepository {
-			file_io,
-			snapshot_history_cache_size,
-			snapshot_history,
-			phantom_data: Default::default(),
-		})
+		Ok(StateSnapshotRepository { file_io, snapshot_history_cache_size, snapshot_history })
 	}
 
 	fn get_snapshot_history_mut(
 		&mut self,
 		shard_identifier: &ShardIdentifier,
-	) -> Result<&mut VecDeque<StateSnapshotMetaData<HashType>>> {
+	) -> Result<&mut VecDeque<StateSnapshotMetaData<FileIo::HashType>>> {
 		self.snapshot_history
 			.get_mut(shard_identifier)
-			.ok_or(Error::InvalidShard(*shard_identifier))
+			.ok_or_else(|| Error::InvalidShard(*shard_identifier))
 	}
 
 	fn get_snapshot_history(
 		&self,
 		shard_identifier: &ShardIdentifier,
-	) -> Result<&VecDeque<StateSnapshotMetaData<HashType>>> {
+	) -> Result<&VecDeque<StateSnapshotMetaData<FileIo::HashType>>> {
 		self.snapshot_history
 			.get(shard_identifier)
-			.ok_or(Error::InvalidShard(*shard_identifier))
+			.ok_or_else(|| Error::InvalidShard(*shard_identifier))
 	}
 
 	fn get_latest_snapshot_metadata(
 		&self,
 		shard_identifier: &ShardIdentifier,
-	) -> Result<&StateSnapshotMetaData<HashType>> {
+	) -> Result<&StateSnapshotMetaData<FileIo::HashType>> {
 		let snapshot_history = self.get_snapshot_history(shard_identifier)?;
 		snapshot_history.front().ok_or(Error::EmptyRepository)
 	}
@@ -149,7 +155,7 @@ where
 	fn remove_snapshots(
 		&self,
 		shard_identifier: &ShardIdentifier,
-		snapshots_metadata: &[StateSnapshotMetaData<HashType>],
+		snapshots_metadata: &[StateSnapshotMetaData<FileIo::HashType>],
 	) {
 		for snapshot_metadata in snapshots_metadata {
 			if let Err(e) = self.file_io.remove(shard_identifier, snapshot_metadata.state_id) {
@@ -163,31 +169,44 @@ where
 	fn write_new_state(
 		&self,
 		shard_identifier: &ShardIdentifier,
-		state: State,
-	) -> Result<(HashType, StateId)> {
+		state: &FileIo::StateType,
+	) -> Result<(FileIo::HashType, StateId)> {
 		let state_id = generate_current_timestamp_state_id();
 		let state_hash = self.file_io.write(shard_identifier, state_id, state)?;
 		Ok((state_hash, state_id))
 	}
 
+	fn initialize_shard_with_snapshot(
+		&mut self,
+		shard_identifier: &ShardIdentifier,
+		state: &FileIo::StateType,
+	) -> Result<FileIo::HashType> {
+		let snapshot_metadata =
+			initialize_shard_with_snapshot(shard_identifier, self.file_io.as_ref(), state)?;
+
+		let state_hash = snapshot_metadata.state_hash;
+		self.snapshot_history
+			.insert(*shard_identifier, VecDeque::from([snapshot_metadata]));
+		Ok(state_hash)
+	}
+
 	fn load_state(
 		&self,
 		shard_identifier: &ShardIdentifier,
-		snapshot_metadata: &StateSnapshotMetaData<HashType>,
-	) -> Result<State> {
+		snapshot_metadata: &StateSnapshotMetaData<FileIo::HashType>,
+	) -> Result<FileIo::StateType> {
 		self.file_io.load(shard_identifier, snapshot_metadata.state_id)
 	}
 }
 
-impl<FileIo, State, HashType> VersionedStateAccess
-	for StateSnapshotRepository<FileIo, State, HashType>
+impl<FileIo> VersionedStateAccess for StateSnapshotRepository<FileIo>
 where
-	FileIo: StateFileIo<StateType = State, HashType = HashType>,
-	HashType: Copy + Eq + Debug,
-	State: Clone,
+	FileIo: StateFileIo,
+	<FileIo as StateFileIo>::HashType: Copy + Eq + Debug,
+	<FileIo as StateFileIo>::StateType: Clone,
 {
-	type StateType = State;
-	type HashType = HashType;
+	type StateType = FileIo::StateType;
+	type HashType = FileIo::HashType;
 
 	fn load_latest(&self, shard_identifier: &ShardIdentifier) -> Result<Self::StateType> {
 		let latest_snapshot_metadata = self.get_latest_snapshot_metadata(shard_identifier)?;
@@ -197,13 +216,15 @@ where
 	fn update(
 		&mut self,
 		shard_identifier: &ShardIdentifier,
-		state: Self::StateType,
-	) -> Result<Self::HashType> {
+		state: &Self::StateType,
+		state_hash: Self::HashType,
+	) -> Result<()> {
 		if !self.shard_exists(shard_identifier) {
-			return Err(Error::InvalidShard(*shard_identifier))
+			self.initialize_shard_with_snapshot(shard_identifier, state)?;
+			return Ok(())
 		}
 
-		let (state_hash, state_id) = self.write_new_state(shard_identifier, state)?;
+		let (_state_hash, state_id) = self.write_new_state(shard_identifier, state)?;
 		let cache_size = self.snapshot_history_cache_size;
 
 		let snapshot_history = self.get_snapshot_history_mut(shard_identifier)?;
@@ -214,7 +235,7 @@ where
 			self.prune_snapshot_history_by_range(shard_identifier, cache_size..)?;
 		}
 
-		Ok(state_hash)
+		Ok(())
 	}
 
 	fn revert_to(
@@ -248,19 +269,9 @@ where
 	fn initialize_new_shard(
 		&mut self,
 		shard_identifier: ShardIdentifier,
+		state: &Self::StateType,
 	) -> Result<Self::HashType> {
-		if let Some(state_snapshots) = self.snapshot_history.get(&shard_identifier) {
-			warn!("Shard ({:?}) already exists, will not initialize again", shard_identifier);
-			return state_snapshots.front().map(|s| s.state_hash).ok_or(Error::EmptyRepository)
-		}
-
-		let snapshot_metadata =
-			initialize_shard_with_snapshot(&shard_identifier, self.file_io.as_ref())?;
-
-		let state_hash = snapshot_metadata.state_hash;
-		self.snapshot_history
-			.insert(shard_identifier, VecDeque::from([snapshot_metadata]));
-		Ok(state_hash)
+		self.initialize_shard_with_snapshot(&shard_identifier, state)
 	}
 
 	fn shard_exists(&self, shard_identifier: &ShardIdentifier) -> bool {
@@ -278,13 +289,25 @@ mod tests {
 	use crate::{
 		in_memory_state_file_io::InMemoryStateFileIo,
 		state_snapshot_repository_loader::StateSnapshotRepositoryLoader,
+		test::mocks::initialize_state_mock::InitializeStateMock,
 	};
-	use std::{collections::hash_map::DefaultHasher, vec};
+	use codec::Encode;
+	use itp_hashing::Hash;
+	use sp_core::{blake2_256, H256};
+	use std::vec;
 
-	type TestState = u64;
-	type TestStateHash = u64;
-	type TestFileIo = InMemoryStateFileIo<TestState, DefaultHasher>;
-	type TestSnapshotRepository = StateSnapshotRepository<TestFileIo, TestState, TestStateHash>;
+	#[derive(Encode, Clone, Default, Copy, Eq, PartialEq, Debug)]
+	struct TestState(pub u64);
+
+	impl Hash<H256> for TestState {
+		fn hash(&self) -> H256 {
+			blake2_256(&self.encode()).into()
+		}
+	}
+
+	type TestFileIo = InMemoryStateFileIo<TestState, TestState>;
+	type TestStateInitializer = InitializeStateMock<TestState>;
+	type TestSnapshotRepository = StateSnapshotRepository<TestFileIo>;
 
 	const TEST_SNAPSHOT_REPOSITORY_CACHE_SIZE: usize = 3;
 
@@ -330,9 +353,11 @@ mod tests {
 		let shard_to_update = shards.get(1).unwrap();
 		assert_eq!(1, file_io.get_states_for_shard(shard_to_update).unwrap().len());
 
-		let new_state = 1234u64;
+		let new_state = TestState(1234u64);
 
-		let _ = state_snapshot_repository.update(shard_to_update, new_state).unwrap();
+		let _ = state_snapshot_repository
+			.update(shard_to_update, &new_state, Default::default())
+			.unwrap();
 
 		let snapshot_history =
 			state_snapshot_repository.snapshot_history.get(shard_to_update).unwrap();
@@ -347,11 +372,12 @@ mod tests {
 		let (file_io, mut state_snapshot_repository) =
 			create_state_snapshot_repository(&[shard_id], TEST_SNAPSHOT_REPOSITORY_CACHE_SIZE);
 
-		let states = vec![1u64, 2u64, 3u64, 4u64, 5u64, 6u64];
+		let states: Vec<TestState> =
+			[1u64, 2u64, 3u64, 4u64, 5u64, 6u64].into_iter().map(|i| TestState(i)).collect();
 		assert!(states.len() > TEST_SNAPSHOT_REPOSITORY_CACHE_SIZE); // ensures we have pruning
 
 		states.iter().for_each(|state| {
-			let _ = state_snapshot_repository.update(&shard_id, *state).unwrap();
+			let _ = state_snapshot_repository.update(&shard_id, state, Default::default()).unwrap();
 		});
 
 		let snapshot_history = state_snapshot_repository.snapshot_history.get(&shard_id).unwrap();
@@ -367,16 +393,19 @@ mod tests {
 	}
 
 	#[test]
-	fn update_latest_with_invalid_shard_returns_error_without_modification() {
+	fn update_latest_with_new_shard_creates_entry_and_does_not_modify_original_shard_entry() {
 		let shard_id = ShardIdentifier::random();
 		let (file_io, mut state_snapshot_repository) =
 			create_state_snapshot_repository(&[shard_id], TEST_SNAPSHOT_REPOSITORY_CACHE_SIZE);
 
-		assert!(state_snapshot_repository.update(&ShardIdentifier::random(), 45).is_err());
+		assert!(state_snapshot_repository
+			.update(&ShardIdentifier::from_low_u64_be(1u64), &TestState(45), Default::default())
+			.is_ok());
 
+		assert_eq!(2, state_snapshot_repository.snapshot_history.len());
 		let snapshot_history = state_snapshot_repository.snapshot_history.get(&shard_id).unwrap();
 		assert_eq!(1, snapshot_history.len());
-		assert_eq!(0u64, state_snapshot_repository.load_latest(&shard_id).unwrap());
+		assert_eq!(TestState(0u64), state_snapshot_repository.load_latest(&shard_id).unwrap());
 		assert_eq!(1, file_io.get_states_for_shard(&shard_id).unwrap().len());
 	}
 
@@ -386,20 +415,25 @@ mod tests {
 		let (file_io, mut state_snapshot_repository) =
 			create_state_snapshot_repository(&[shard_id], 6);
 
-		let states = vec![1u64, 2u64, 3u64, 4u64, 5u64];
+		let states: Vec<TestState> =
+			[1u64, 2u64, 3u64, 4u64, 5u64].into_iter().map(|i| TestState(i)).collect();
 
 		let state_hashes = states
 			.iter()
-			.map(|state| state_snapshot_repository.update(&shard_id, *state).unwrap())
+			.map(|state| {
+				let state_hash = state.hash();
+				state_snapshot_repository.update(&shard_id, state, state_hash).unwrap();
+				state_hash
+			})
 			.collect::<Vec<_>>();
 		let revert_target_hash = state_hashes.get(1).unwrap();
 
 		let reverted_state =
 			state_snapshot_repository.revert_to(&shard_id, revert_target_hash).unwrap();
 
-		assert_eq!(2u64, reverted_state);
+		assert_eq!(TestState(2u64), reverted_state);
 		assert_eq!(3, state_snapshot_repository.snapshot_history.get(&shard_id).unwrap().len()); // because we have initialized version '0' as well
-		assert_eq!(2u64, state_snapshot_repository.load_latest(&shard_id).unwrap());
+		assert_eq!(TestState(2u64), state_snapshot_repository.load_latest(&shard_id).unwrap());
 		assert_eq!(3, file_io.get_states_for_shard(&shard_id).unwrap().len());
 	}
 
@@ -412,7 +446,9 @@ mod tests {
 		assert!(state_snapshot_repository.load_latest(&shard_id).is_err());
 		assert!(state_snapshot_repository.list_shards().unwrap().is_empty());
 
-		let _hash = state_snapshot_repository.initialize_new_shard(shard_id).unwrap();
+		let _hash = state_snapshot_repository
+			.initialize_new_shard(shard_id, &Default::default())
+			.unwrap();
 
 		assert!(state_snapshot_repository.load_latest(&shard_id).is_ok());
 		assert_eq!(1, state_snapshot_repository.list_shards().unwrap().len());
@@ -423,7 +459,9 @@ mod tests {
 		let shard_id = ShardIdentifier::random();
 		let (_, mut state_snapshot_repository) = create_state_snapshot_repository(&[shard_id], 2);
 
-		let _hash = state_snapshot_repository.initialize_new_shard(shard_id).unwrap();
+		let _hash = state_snapshot_repository
+			.initialize_new_shard(shard_id, &Default::default())
+			.unwrap();
 
 		assert!(state_snapshot_repository.load_latest(&shard_id).is_ok());
 		assert_eq!(1, state_snapshot_repository.list_shards().unwrap().len());
@@ -434,11 +472,13 @@ mod tests {
 		snapshot_history_size: usize,
 	) -> (Arc<TestFileIo>, TestSnapshotRepository) {
 		let file_io = create_test_file_io(shards);
-		let repository_loader = StateSnapshotRepositoryLoader::new(file_io.clone());
+		let state_initializer = Arc::new(TestStateInitializer::new(Default::default()));
+		let repository_loader =
+			StateSnapshotRepositoryLoader::new(file_io.clone(), state_initializer);
 		(file_io, repository_loader.load_snapshot_repository(snapshot_history_size).unwrap())
 	}
 
 	fn create_test_file_io(shards: &[ShardIdentifier]) -> Arc<TestFileIo> {
-		Arc::new(TestFileIo::new(DefaultHasher::default(), shards))
+		Arc::new(TestFileIo::new(shards, Box::new(|x| *x), Box::new(|x| x)))
 	}
 }

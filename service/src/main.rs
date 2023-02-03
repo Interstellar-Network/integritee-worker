@@ -30,7 +30,7 @@ use crate::{
 	ocall_bridge::{
 		bridge_api::Bridge as OCallBridge, component_factory::OCallBridgeComponentFactory,
 	},
-	parentchain_block_syncer::{ParentchainBlockSyncer, SyncParentchainBlocks},
+	parentchain_handler::{HandleParentchain, ParentchainHandler},
 	prometheus_metrics::{start_metrics_server, EnclaveMetricsReceiver, MetricsHandler},
 	sidechain_setup::{sidechain_init_block_production, sidechain_start_untrusted_rpc_server},
 	sync_block_broadcaster::SyncBlockBroadcaster,
@@ -46,18 +46,16 @@ use enclave::{
 	api::enclave_init,
 	tls_ra::{enclave_request_state_provisioning, enclave_run_state_provisioning_server},
 };
-use itc_parentchain_light_client::light_client_init_params::LightClientInitParams;
 use itp_enclave_api::{
 	direct_request::DirectRequest,
 	enclave_base::EnclaveBase,
 	remote_attestation::{RemoteAttestation, TlsRemoteAttestation},
 	sidechain::Sidechain,
 	teeracle_api::TeeracleApi,
-	teerex_api::TeerexApi,
 	Enclave,
 };
 use itp_node_api::{
-	api_client::{AccountApi, ChainApi, PalletTeerexApi, ParentchainApi},
+	api_client::{AccountApi, PalletTeerexApi, ParentchainApi},
 	metadata::NodeMetadata,
 	node_api_factory::{CreateNodeApi, NodeApiFactory},
 };
@@ -71,10 +69,9 @@ use its_peer_fetch::{
 use its_primitives::types::block::SignedBlock as SignedSidechainBlock;
 use its_storage::{interface::FetchBlocks, BlockPruner, SidechainStorageLock};
 use log::*;
-use my_node_runtime::{Event, Hash, Header};
+use my_node_runtime::{Hash, Header, RuntimeEvent};
 use sgx_types::*;
 use sp_core::crypto::{AccountId32, Ss58Codec};
-use sp_finality_grandpa::VersionedAuthorityList;
 use sp_keyring::AccountKeyring;
 use std::{
 	path::PathBuf,
@@ -96,19 +93,18 @@ mod error;
 mod globals;
 mod initialized_service;
 mod ocall_bridge;
-mod parentchain_block_syncer;
+mod parentchain_handler;
 mod prometheus_metrics;
 mod setup;
 mod sidechain_setup;
 mod sync_block_broadcaster;
 mod sync_state;
+#[cfg(feature = "teeracle")]
+mod teeracle;
 mod tests;
 mod utils;
 mod worker;
 mod worker_peers_updater;
-
-#[cfg(feature = "teeracle")]
-mod teeracle;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -223,7 +219,10 @@ fn main() {
 		setup::generate_signing_key_file(enclave.as_ref());
 	} else if matches.is_present("dump-ra") {
 		info!("*** Perform RA and dump cert to disk");
-		enclave.dump_ra_to_disk().unwrap();
+		#[cfg(not(feature = "dcap"))]
+		enclave.dump_ias_ra_cert_to_disk().unwrap();
+		#[cfg(feature = "dcap")]
+		enclave.dump_dcap_ra_cert_to_disk().unwrap();
 	} else if matches.is_present("mrenclave") {
 		println!("{}", enclave.get_mrenclave().unwrap().encode().to_base58());
 	} else if let Some(sub_matches) = matches.subcommand_matches("init-shard") {
@@ -281,18 +280,22 @@ fn start_worker<E, T, D, InitializationHandler, WorkerModeProvider>(
 		+ Sidechain
 		+ RemoteAttestation
 		+ TlsRemoteAttestation
-		+ TeerexApi
 		+ TeeracleApi
 		+ Clone,
 	D: BlockPruner + FetchBlocks<SignedSidechainBlock> + Sync + Send + 'static,
 	InitializationHandler: TrackInitialization + IsInitialized + Sync + Send + 'static,
 	WorkerModeProvider: ProvideWorkerMode,
 {
-	println!("IntegriTEE Worker v{}", VERSION);
+	let run_config = config.run_config.clone().expect("Run config missing");
+	let skip_ra = run_config.skip_ra;
+
+	println!("Integritee Worker v{}", VERSION);
 	info!("starting worker on shard {}", shard.encode().to_base58());
 	// ------------------------------------------------------------------------
 	// check for required files
-	check_files();
+	if !skip_ra {
+		check_files();
+	}
 	// ------------------------------------------------------------------------
 	// initialize the enclave
 	let mrenclave = enclave.get_mrenclave().unwrap();
@@ -302,8 +305,6 @@ fn start_worker<E, T, D, InitializationHandler, WorkerModeProvider>(
 	// ------------------------------------------------------------------------
 	// let new workers call us for key provisioning
 	println!("MU-RA server listening on {}", config.mu_ra_url());
-	let run_config = config.run_config.clone().expect("Run config missing");
-	let skip_ra = run_config.skip_ra;
 	let is_development_mode = run_config.dev;
 	let ra_url = config.mu_ra_url();
 	let enclave_api_key_prov = enclave.clone();
@@ -313,7 +314,8 @@ fn start_worker<E, T, D, InitializationHandler, WorkerModeProvider>(
 			sgx_quote_sign_type_t::SGX_UNLINKABLE_SIGNATURE,
 			&ra_url,
 			skip_ra,
-		)
+		);
+		info!("State provisioning server stopped.");
 	});
 
 	let tokio_handle = tokio_handle_getter.get_handle();
@@ -323,7 +325,6 @@ fn start_worker<E, T, D, InitializationHandler, WorkerModeProvider>(
 
 	// ------------------------------------------------------------------------
 	// Get the public key of our TEE.
-	let genesis_hash = node_api.genesis_hash.as_bytes().to_vec();
 	let tee_accountid = enclave_account(enclave.as_ref());
 	println!("Enclave account {:} ", &tee_accountid.to_ss58check());
 
@@ -390,7 +391,15 @@ fn start_worker<E, T, D, InitializationHandler, WorkerModeProvider>(
 	}
 
 	// ------------------------------------------------------------------------
-	// Perform a remote attestation and get an unchecked extrinsic back.
+	// Init parentchain specific stuff. Needed for parentchain communication.
+	let parentchain_handler = Arc::new(
+		ParentchainHandler::new_with_automatic_light_client_allocation(
+			node_api.clone(),
+			enclave.clone(),
+		)
+		.unwrap(),
+	);
+	let last_synced_header = parentchain_handler.init_parentchain_components().unwrap();
 	let nonce = node_api.get_nonce_of(&tee_accountid).unwrap();
 	info!("Enclave nonce = {:?}", nonce);
 	enclave
@@ -404,19 +413,22 @@ fn start_worker<E, T, D, InitializationHandler, WorkerModeProvider>(
 		.set_node_metadata(
 			NodeMetadata::new(metadata, runtime_spec_version, runtime_transaction_version).encode(),
 		)
-		.expect("Could not set the node meta data in the enclave");
+		.expect("Could not set the node metadata in the enclave");
 
+	// ------------------------------------------------------------------------
+	// Perform a remote attestation and get an unchecked extrinsic back.
 	let trusted_url = config.trusted_worker_url_external();
-	let uxt = if skip_ra {
+	if skip_ra {
 		println!(
 			"[!] skipping remote attestation. Registering enclave without attestation report."
 		);
-		enclave.mock_register_xt(node_api.genesis_hash, nonce, &trusted_url).unwrap()
 	} else {
-		enclave
-			.perform_ra(genesis_hash, nonce, trusted_url.as_bytes().to_vec())
-			.unwrap()
+		println!("[!] creating remote attestation report and create enclave register extrinsic.");
 	};
+	#[cfg(not(feature = "dcap"))]
+	let uxt = enclave.generate_ias_ra_extrinsic(&trusted_url, skip_ra).unwrap();
+	#[cfg(feature = "dcap")]
+	let uxt = enclave.generate_dcap_ra_extrinsic(&trusted_url, skip_ra).unwrap();
 
 	let mut xthex = hex::encode(uxt);
 	xthex.insert_str(0, "0x");
@@ -448,8 +460,6 @@ fn start_worker<E, T, D, InitializationHandler, WorkerModeProvider>(
 
 	initialization_handler.registered_on_parentchain();
 
-	let last_synced_header = init_light_client(&node_api, enclave.clone()).unwrap();
-
 	// ------------------------------------------------------------------------
 	// initialize teeracle interval
 	#[cfg(feature = "teeracle")]
@@ -466,35 +476,31 @@ fn start_worker<E, T, D, InitializationHandler, WorkerModeProvider>(
 		println!("*** [+] Finished syncing light client, syncing parentchain...");
 
 		// Syncing all parentchain blocks, this might take a while..
-		let parentchain_block_syncer =
-			Arc::new(ParentchainBlockSyncer::new(node_api.clone(), enclave.clone()));
-		let mut last_synced_header = parentchain_block_syncer.sync_parentchain(last_synced_header);
+		let mut last_synced_header =
+			parentchain_handler.sync_parentchain(last_synced_header).unwrap();
 
 		// ------------------------------------------------------------------------
 		// Initialize the sidechain
 		if WorkerModeProvider::worker_mode() == WorkerMode::Sidechain {
 			last_synced_header = sidechain_init_block_production(
-				enclave.clone(),
+				enclave,
 				&register_enclave_xt_header,
 				we_are_primary_validateer,
-				parentchain_block_syncer,
+				parentchain_handler.clone(),
 				sidechain_storage,
 				&last_synced_header,
-			);
+			)
+			.unwrap();
 		}
 
 		// ------------------------------------------------------------------------
 		// start parentchain syncing loop (subscribe to header updates)
-		let api4 = node_api.clone();
-		let enclave_parentchain_sync = enclave;
 		thread::Builder::new()
 			.name("parentchain_sync_loop".to_owned())
 			.spawn(move || {
-				if let Err(e) = subscribe_to_parentchain_new_headers(
-					enclave_parentchain_sync,
-					&api4,
-					last_synced_header,
-				) {
+				if let Err(e) =
+					subscribe_to_parentchain_new_headers(parentchain_handler, last_synced_header)
+				{
 					error!("Parentchain block syncing terminated with a failure: {:?}", e);
 				}
 				println!("[!] Parentchain block syncing has terminated");
@@ -558,7 +564,7 @@ fn spawn_worker_for_shard_polling<InitializationHandler>(
 	});
 }
 
-type Events = Vec<frame_system::EventRecord<Event, Hash>>;
+type Events = Vec<frame_system::EventRecord<RuntimeEvent, Hash>>;
 
 fn parse_events(event: String) -> Result<Events, String> {
 	let _unhex = Vec::from_hex(event).map_err(|_| "Decoding Events Failed".to_string())?;
@@ -570,7 +576,7 @@ fn print_events(events: Events, _sender: Sender<String>) {
 	for evr in &events {
 		debug!("Decoded: phase = {:?}, event = {:?}", evr.phase, evr.event);
 		match &evr.event {
-			Event::Balances(be) => {
+			RuntimeEvent::Balances(be) => {
 				info!("[+] Received balances event");
 				debug!("{:?}", be);
 				match &be {
@@ -588,7 +594,7 @@ fn print_events(events: Events, _sender: Sender<String>) {
 					},
 				}
 			},
-			Event::Teerex(re) => {
+			RuntimeEvent::Teerex(re) => {
 				debug!("{:?}", re);
 				match &re {
 					my_node_runtime::pallet_teerex::Event::AddedEnclave(sender, worker_url) => {
@@ -606,11 +612,13 @@ fn print_events(events: Events, _sender: Sender<String>) {
 						sender,
 						block_hash,
 						merkle_root,
+						block_number,
 					) => {
 						info!("[+] Received ProcessedParentchainBlock event");
 						debug!("    From:    {:?}", sender);
 						debug!("    Block Hash: {:?}", hex::encode(block_hash));
 						debug!("    Merkle Root: {:?}", hex::encode(merkle_root));
+						debug!("    Block Number: {:?}", block_number);
 					},
 					my_node_runtime::pallet_teerex::Event::ShieldFunds(incognito_account) => {
 						info!("[+] Received ShieldFunds event");
@@ -626,7 +634,7 @@ fn print_events(events: Events, _sender: Sender<String>) {
 				}
 			},
 			#[cfg(feature = "teeracle")]
-			Event::Teeracle(re) => {
+			RuntimeEvent::Teeracle(re) => {
 				debug!("{:?}", re);
 				match &re {
 					my_node_runtime::pallet_teeracle::Event::ExchangeRateUpdated(
@@ -669,7 +677,7 @@ fn print_events(events: Events, _sender: Sender<String>) {
 				}
 			},
 			#[cfg(feature = "sidechain")]
-			Event::Sidechain(re) => match &re {
+			RuntimeEvent::Sidechain(re) => match &re {
 				my_node_runtime::pallet_sidechain::Event::ProposedSidechainBlock(
 					sender,
 					payload,
@@ -689,46 +697,20 @@ fn print_events(events: Events, _sender: Sender<String>) {
 	}
 }
 
-pub fn init_light_client<E: EnclaveBase + Sidechain>(
-	api: &ParentchainApi,
-	enclave_api: Arc<E>,
-) -> Result<Header, Error> {
-	let genesis_hash = api.get_genesis_hash().unwrap();
-	let genesis_header: Header = api.get_header(Some(genesis_hash)).unwrap().unwrap();
-	info!("Got genesis Header: \n {:?} \n", genesis_header);
-	if api.is_grandpa_available()? {
-		let grandpas = api.grandpa_authorities(Some(genesis_hash)).unwrap();
-		let grandpa_proof = api.grandpa_authorities_proof(Some(genesis_hash)).unwrap();
-
-		debug!("Grandpa Authority List: \n {:?} \n ", grandpas);
-
-		let authority_list = VersionedAuthorityList::from(grandpas);
-
-		let params = LightClientInitParams::Grandpa {
-			genesis_header,
-			authorities: authority_list.into(),
-			authority_proof: grandpa_proof,
-		};
-
-		Ok(enclave_api.init_light_client(params).unwrap())
-	} else {
-		let params = LightClientInitParams::Parachain { genesis_header };
-
-		Ok(enclave_api.init_light_client(params).unwrap())
-	}
-}
-
 /// Subscribe to the node API finalized heads stream and trigger a parent chain sync
 /// upon receiving a new header.
 fn subscribe_to_parentchain_new_headers<E: EnclaveBase + Sidechain>(
-	enclave_api: Arc<E>,
-	api: &ParentchainApi,
+	parentchain_handler: Arc<ParentchainHandler<ParentchainApi, E>>,
 	mut last_synced_header: Header,
 ) -> Result<(), Error> {
 	let (sender, receiver) = channel();
-	api.subscribe_finalized_heads(sender).map_err(Error::ApiClient)?;
+	//TODO: this should be implemented by parentchain_handler directly, and not via
+	// exposed parentchain_api. Blocked by https://github.com/scs/substrate-api-client/issues/267.
+	parentchain_handler
+		.parentchain_api()
+		.subscribe_finalized_heads(sender)
+		.map_err(Error::ApiClient)?;
 
-	let parentchain_block_syncer = ParentchainBlockSyncer::new(api.clone(), enclave_api);
 	loop {
 		let new_header: Header = match receiver.recv() {
 			Ok(header_str) => serde_json::from_str(&header_str).map_err(Error::Serialization),
@@ -740,7 +722,7 @@ fn subscribe_to_parentchain_new_headers<E: EnclaveBase + Sidechain>(
 			new_header.number
 		);
 
-		last_synced_header = parentchain_block_syncer.sync_parentchain(last_synced_header);
+		last_synced_header = parentchain_handler.sync_parentchain(last_synced_header)?;
 	}
 }
 

@@ -31,51 +31,41 @@ extern crate sgx_tstd as std;
 
 use crate::{
 	error::{Error, Result},
-	global_components::{
-		GLOBAL_IMMEDIATE_PARENTCHAIN_IMPORT_DISPATCHER_COMPONENT,
-		GLOBAL_NODE_METADATA_REPOSITORY_COMPONENT, GLOBAL_SIDECHAIN_IMPORT_QUEUE_COMPONENT,
-		GLOBAL_STATE_HANDLER_COMPONENT, GLOBAL_TRIGGERED_PARENTCHAIN_IMPORT_DISPATCHER_COMPONENT,
+	initialization::global_components::{
+		GLOBAL_FULL_PARACHAIN_HANDLER_COMPONENT, GLOBAL_FULL_SOLOCHAIN_HANDLER_COMPONENT,
+		GLOBAL_SIDECHAIN_IMPORT_QUEUE_COMPONENT, GLOBAL_STATE_HANDLER_COMPONENT,
 	},
-	ocall::OcallApi,
 	rpc::worker_api_direct::sidechain_io_handler,
-	utils::{hash_from_slice, utf8_str_from_raw, DecodeRaw},
-};
-use codec::{alloc::string::String, Decode, Encode};
-use itc_parentchain::{
-	block_import_dispatcher::{
-		triggered_dispatcher::TriggerParentchainBlockImport, DispatchBlockImport,
+	utils::{
+		get_node_metadata_repository_from_solo_or_parachain,
+		get_triggered_dispatcher_from_solo_or_parachain, utf8_str_from_raw, DecodeRaw,
 	},
-	light_client::light_client_init_params::LightClientInitParams,
+};
+use codec::{alloc::string::String, Decode};
+use itc_parentchain::block_import_dispatcher::{
+	triggered_dispatcher::TriggerParentchainBlockImport, DispatchBlockImport,
 };
 use itp_block_import_queue::PushToBlockQueue;
 use itp_component_container::ComponentGetter;
-use itp_node_api::{
-	api_client::{ParentchainExtrinsicParams, ParentchainExtrinsicParamsBuilder},
-	metadata::{pallet_teerex::TeerexCallIndexes, provider::AccessNodeMetadata, NodeMetadata},
-};
+use itp_node_api::metadata::NodeMetadata;
 use itp_nonce_cache::{MutateNonce, Nonce, GLOBAL_NONCE_CACHE};
-use itp_ocall_api::EnclaveAttestationOCallApi;
 use itp_settings::worker_mode::{ProvideWorkerMode, WorkerMode, WorkerModeProvider};
 use itp_sgx_crypto::{ed25519, Ed25519Seal, Rsa3072Seal};
-use itp_sgx_io as io;
 use itp_sgx_io::StaticSealedIO;
-use itp_types::{Header, ShardIdentifier, SignedBlock};
+use itp_types::{ShardIdentifier, SignedBlock};
 use itp_utils::write_slice_and_whitespace_pad;
 use log::*;
 use sgx_types::sgx_status_t;
 use sp_core::crypto::Pair;
 use std::{boxed::Box, slice, vec::Vec};
-use substrate_api_client::{compose_extrinsic_offline, ExtrinsicParams};
 
 mod attestation;
 mod empty_impls;
-mod global_components;
 mod initialization;
 mod ipfs;
 mod ocall;
 mod utils;
 
-pub mod cert;
 pub mod error;
 pub mod rpc;
 mod sync;
@@ -87,8 +77,6 @@ pub mod teeracle;
 
 #[cfg(feature = "test")]
 pub mod test;
-
-pub const CERTEXPIRYDAYS: i64 = 90i64;
 
 pub type Hash = sp_core::H256;
 pub type AuthorityPair = sp_core::ed25519::Pair;
@@ -203,7 +191,7 @@ pub unsafe extern "C" fn set_node_metadata(
 		Ok(m) => m,
 	};
 
-	let node_metadata_repository = match GLOBAL_NODE_METADATA_REPOSITORY_COMPONENT.get() {
+	let node_metadata_repository = match get_node_metadata_repository_from_solo_or_parachain() {
 		Ok(r) => r,
 		Err(e) => {
 			error!("Component get failure: {:?}", e);
@@ -214,86 +202,6 @@ pub unsafe extern "C" fn set_node_metadata(
 	node_metadata_repository.set_metadata(metadata);
 	info!("Successfully set the node meta data");
 
-	sgx_status_t::SGX_SUCCESS
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn mock_register_enclave_xt(
-	genesis_hash: *const u8,
-	genesis_hash_size: u32,
-	_nonce: *const u32,
-	w_url: *const u8,
-	w_url_size: u32,
-	unchecked_extrinsic: *mut u8,
-	unchecked_extrinsic_size: u32,
-) -> sgx_status_t {
-	let genesis_hash_slice = slice::from_raw_parts(genesis_hash, genesis_hash_size as usize);
-	let genesis_hash = hash_from_slice(genesis_hash_slice);
-
-	let mut url_slice = slice::from_raw_parts(w_url, w_url_size as usize);
-	let url: String = Decode::decode(&mut url_slice).unwrap();
-	let extrinsic_slice =
-		slice::from_raw_parts_mut(unchecked_extrinsic, unchecked_extrinsic_size as usize);
-
-	let mre = OcallApi
-		.get_mrenclave_of_self()
-		.map_or_else(|_| Vec::<u8>::new(), |m| m.m.encode());
-
-	let signer = Ed25519Seal::unseal_from_static_file().unwrap();
-
-	let node_metadata_repository = match GLOBAL_NODE_METADATA_REPOSITORY_COMPONENT.get() {
-		Ok(r) => r,
-		Err(e) => {
-			error!("Component get failure: {:?}", e);
-			return sgx_status_t::SGX_ERROR_UNEXPECTED
-		},
-	};
-
-	let (register_enclave_call, runtime_spec_version, runtime_transaction_version) =
-		match node_metadata_repository.get_from_metadata(|m| {
-			(
-				m.register_enclave_call_indexes(),
-				m.get_runtime_version(),
-				m.get_runtime_transaction_version(),
-			)
-		}) {
-			Ok(r) => r,
-			Err(e) => {
-				error!("Failed to get node metadata: {:?}", e);
-				return sgx_status_t::SGX_ERROR_UNEXPECTED
-			},
-		};
-
-	let call_ids =
-		match register_enclave_call {
-			Ok(c) => c,
-			Err(e) => {
-				error!("Failed to get the indexes for the register_enclave cal from the metadata: {:?}", e);
-				return sgx_status_t::SGX_ERROR_UNEXPECTED
-			},
-		};
-
-	let call = (call_ids, mre, url);
-
-	let nonce_cache = GLOBAL_NONCE_CACHE.clone();
-	let mut nonce_lock = nonce_cache.load_for_mutation().expect("Nonce lock poisoning");
-	let nonce_value = nonce_lock.0;
-
-	let extrinsic_params = ParentchainExtrinsicParams::new(
-		runtime_spec_version,
-		runtime_transaction_version,
-		nonce_value,
-		genesis_hash,
-		ParentchainExtrinsicParamsBuilder::default(),
-	);
-	let xt = compose_extrinsic_offline!(signer, call, extrinsic_params).encode();
-
-	*nonce_lock = Nonce(nonce_value + 1);
-	std::mem::drop(nonce_lock);
-
-	if let Err(e) = write_slice_and_whitespace_pad(extrinsic_slice, xt) {
-		return Error::Other(Box::new(e)).into()
-	};
 	sgx_status_t::SGX_SUCCESS
 }
 
@@ -387,7 +295,7 @@ pub unsafe extern "C" fn init_direct_invocation_server(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn init_light_client(
+pub unsafe extern "C" fn init_parentchain_components(
 	params: *const u8,
 	params_size: usize,
 	latest_header: *mut u8,
@@ -395,20 +303,18 @@ pub unsafe extern "C" fn init_light_client(
 ) -> sgx_status_t {
 	info!("Initializing light client!");
 
-	let mut params = slice::from_raw_parts(params, params_size);
+	let encoded_params = slice::from_raw_parts(params, params_size);
 	let latest_header_slice = slice::from_raw_parts_mut(latest_header, latest_header_size);
 
-	let params = match LightClientInitParams::<Header>::decode(&mut params) {
-		Ok(p) => p,
-		Err(e) => return Error::Codec(e).into(),
-	};
-
-	let latest_header = match initialization::init_light_client::<WorkerModeProvider>(params) {
+	let encoded_latest_header = match initialization::parentchain::init_parentchain_components::<
+		WorkerModeProvider,
+	>(encoded_params.to_vec())
+	{
 		Ok(h) => h,
 		Err(e) => return e.into(),
 	};
 
-	if let Err(e) = write_slice_and_whitespace_pad(latest_header_slice, latest_header.encode()) {
+	if let Err(e) = write_slice_and_whitespace_pad(latest_header_slice, encoded_latest_header) {
 		return Error::Other(Box::new(e)).into()
 	};
 
@@ -457,14 +363,21 @@ pub unsafe extern "C" fn sync_parentchain(
 fn dispatch_parentchain_blocks_for_import<WorkerModeProvider: ProvideWorkerMode>(
 	blocks_to_sync: Vec<SignedBlock>,
 ) -> Result<()> {
-	match WorkerModeProvider::worker_mode() {
-		WorkerMode::Sidechain => GLOBAL_TRIGGERED_PARENTCHAIN_IMPORT_DISPATCHER_COMPONENT
-			.get()?
-			.dispatch_import(blocks_to_sync)?,
-		_ => GLOBAL_IMMEDIATE_PARENTCHAIN_IMPORT_DISPATCHER_COMPONENT
-			.get()?
-			.dispatch_import(blocks_to_sync)?,
+	if WorkerModeProvider::worker_mode() == WorkerMode::Teeracle {
+		trace!("Not importing any parentchain blocks");
+		return Ok(())
 	}
+
+	let import_dispatcher =
+		if let Ok(solochain_handler) = GLOBAL_FULL_SOLOCHAIN_HANDLER_COMPONENT.get() {
+			solochain_handler.import_dispatcher.clone()
+		} else if let Ok(parachain_handler) = GLOBAL_FULL_PARACHAIN_HANDLER_COMPONENT.get() {
+			parachain_handler.import_dispatcher.clone()
+		} else {
+			return Err(Error::NoParentchainAssigned)
+		};
+
+	import_dispatcher.dispatch_import(blocks_to_sync)?;
 	Ok(())
 }
 
@@ -475,25 +388,32 @@ fn dispatch_parentchain_blocks_for_import<WorkerModeProvider: ProvideWorkerMode>
 /// sidechain and the `ImmediateDispatcher` are used, this function is obsolete.
 #[no_mangle]
 pub unsafe extern "C" fn trigger_parentchain_block_import() -> sgx_status_t {
-	match GLOBAL_TRIGGERED_PARENTCHAIN_IMPORT_DISPATCHER_COMPONENT.get() {
-		Ok(dispatcher) => match dispatcher.import_all() {
-			Ok(_) => sgx_status_t::SGX_SUCCESS,
-			Err(e) => {
-				error!("Failed to trigger import of parentchain blocks: {:?}", e);
-				sgx_status_t::SGX_ERROR_UNEXPECTED
-			},
+	match internal_trigger_parentchain_block_import() {
+		Ok(()) => sgx_status_t::SGX_SUCCESS,
+		Err(e) => {
+			error!("Failed to trigger import of parentchain blocks: {:?}", e);
+			sgx_status_t::SGX_ERROR_UNEXPECTED
 		},
-		Err(e) => Error::ComponentContainer(e).into(),
 	}
 }
 
-/// W/A "undefined reference to `__assert_fail'" for debug builds
+fn internal_trigger_parentchain_block_import() -> Result<()> {
+	let triggered_import_dispatcher = get_triggered_dispatcher_from_solo_or_parachain()?;
+	triggered_import_dispatcher.import_all()?;
+	Ok(())
+}
+
+/// [interstellar] W/A "undefined reference to `__assert_fail'" for debug builds
 /// https://github.com/apache/incubator-teaclave-sgx-sdk/issues/44
 // TODO! readd #[cfg b/c this will probably fail to compile in NON debug?
 // #[cfg(debug_assertions)]
 #[no_mangle]
-pub extern "C"
-fn __assert_fail (__assertion: *const u8, __file: *const u8, __line: u32, __function: *const u8) -> ! {
-    use core::intrinsics::abort;
-    unsafe {abort()}
+pub extern "C" fn __assert_fail(
+	__assertion: *const u8,
+	__file: *const u8,
+	__line: u32,
+	__function: *const u8,
+) -> ! {
+	use core::intrinsics::abort;
+	unsafe { abort() }
 }

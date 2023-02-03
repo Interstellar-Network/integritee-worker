@@ -19,6 +19,8 @@
 //! Type definitions for testing. Includes various mocks.
 
 use crate::test::mocks::rpc_responder_mock::RpcResponderMock;
+use ita_sgx_runtime::Runtime;
+use ita_stf::{Getter, Stf, TrustedCallSigned};
 use itc_parentchain::block_import_dispatcher::trigger_parentchain_block_import_mock::TriggerParentchainBlockImportMock;
 use itp_node_api::metadata::{metadata_mocks::NodeMetadataMock, provider::NodeMetadataRepository};
 use itp_sgx_crypto::{mocks::KeyRepositoryMock, Aes};
@@ -31,10 +33,8 @@ use itp_test::mock::{
 use itp_top_pool::basic_pool::BasicPool;
 use itp_top_pool_author::{api::SidechainApi, author::Author, top_filter::AllowAllTopsFilter};
 use itp_types::{Block as ParentchainBlock, SignedBlock as SignedParentchainBlock};
-use its_primitives::types::{Block as SidechainBlock, SignedBlock as SignedSidechainBlock};
-use its_sidechain::{
-	aura::block_importer::BlockImporter, block_composer::BlockComposer, state::SidechainDB,
-};
+use its_primitives::types::SignedBlock as SignedSidechainBlock;
+use its_sidechain::{aura::block_importer::BlockImporter, block_composer::BlockComposer};
 use primitive_types::H256;
 use sgx_crypto_helper::rsa3072::Rsa3072KeyPair;
 use sp_core::ed25519 as spEd25519;
@@ -43,13 +43,15 @@ pub type TestSigner = spEd25519::Pair;
 pub type TestShieldingKey = Rsa3072KeyPair;
 pub type TestStateKey = Aes;
 
+pub type TestGetter = Getter;
+pub type TestCall = TrustedCallSigned;
+pub type TestStf = Stf<TestCall, TestGetter, SgxExternalities, Runtime>;
+
 pub type TestShieldingKeyRepo = KeyRepositoryMock<TestShieldingKey>;
 
 pub type TestStateKeyRepo = KeyRepositoryMock<TestStateKey>;
 
 pub type TestStateHandler = HandleStateMock;
-
-pub type TestSidechainDb = SidechainDB<SidechainBlock, SgxExternalities>;
 
 pub type TestOCallApi = OnchainMock;
 
@@ -58,7 +60,8 @@ pub type TestParentchainBlockImportTrigger =
 
 pub type TestNodeMetadataRepository = NodeMetadataRepository<NodeMetadataMock>;
 
-pub type TestStfExecutor = StfExecutor<TestOCallApi, TestStateHandler, TestNodeMetadataRepository>;
+pub type TestStfExecutor =
+	StfExecutor<TestOCallApi, TestStateHandler, TestNodeMetadataRepository, TestStf>;
 
 pub type TestRpcResponder = RpcResponderMock<H256>;
 
@@ -81,7 +84,6 @@ pub type TestBlockImporter = BlockImporter<
 	ParentchainBlock,
 	SignedSidechainBlock,
 	TestOCallApi,
-	TestSidechainDb,
 	HandleStateMock,
 	TestStateKeyRepo,
 	TestTopPoolAuthor,

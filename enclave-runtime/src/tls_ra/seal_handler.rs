@@ -20,17 +20,16 @@
 
 use crate::error::{Error as EnclaveError, Result as EnclaveResult};
 use codec::{Decode, Encode};
-use ita_stf::{State as StfState, StateType as StfStateType, Stf};
+use ita_stf::{State as StfState, StateType as StfStateType};
 use itp_sgx_crypto::{
-	ed25519_derivation::DeriveEd25519,
 	key_repository::{AccessKey, MutateKey},
 	Aes,
 };
+use itp_sgx_externalities::SgxExternalitiesTrait;
 use itp_stf_state_handler::handle_state::HandleState;
 use itp_types::ShardIdentifier;
 use log::*;
 use sgx_crypto_helper::rsa3072::Rsa3072KeyPair;
-use sp_core::Pair;
 use std::{sync::Arc, vec::Vec};
 
 /// Handles the sealing and unsealing of the shielding key, state key and the state.
@@ -103,7 +102,7 @@ where
 
 	fn seal_state(&self, mut bytes: &[u8], shard: &ShardIdentifier) -> EnclaveResult<()> {
 		let state = StfStateType::decode(&mut bytes)?;
-		let state_with_empty_diff = StfState { state, state_diff: Default::default() };
+		let state_with_empty_diff = StfState::new(state);
 
 		self.state_handler.reset(state_with_empty_diff, shard)?;
 		info!("Successfully updated shard {:?} with provisioned state", shard);
@@ -118,10 +117,7 @@ where
 	/// Since the enclave signing account is derived from the shielding key, we need to
 	/// newly initialize the state with the updated shielding key.
 	fn seal_new_empty_state(&self, shard: &ShardIdentifier) -> EnclaveResult<()> {
-		let enclave_account =
-			self.shielding_key_repository.retrieve_key()?.derive_ed25519()?.public();
-		let state = Stf::init_state(enclave_account.into());
-		self.state_handler.reset(state, shard)?;
+		self.state_handler.initialize_shard(*shard)?;
 		info!("Successfully reset state with new enclave account, for shard {:?}", shard);
 		Ok(())
 	}
@@ -150,8 +146,7 @@ where
 	}
 
 	fn unseal_state(&self, shard: &ShardIdentifier) -> EnclaveResult<Vec<u8>> {
-		let state = self.state_handler.load(shard)?;
-		Ok(state.state.encode())
+		Ok(self.state_handler.execute_on_current(shard, |state, _| state.state.encode())?)
 	}
 }
 
@@ -159,7 +154,6 @@ where
 pub mod test {
 	use super::*;
 	use itp_sgx_crypto::mocks::KeyRepositoryMock;
-	use itp_sgx_externalities::SgxExternalitiesTrait;
 	use itp_test::mock::handle_state_mock::HandleStateMock;
 
 	type StateKeyRepositoryMock = KeyRepositoryMock<Aes>;

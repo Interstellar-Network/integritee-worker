@@ -101,7 +101,7 @@ where
 			self.connection_handler.clone(),
 		)?;
 
-		debug!("Web-socket connection created");
+		trace!("Web-socket connection created");
 		web_socket_connection.register(poll)?;
 
 		let mut connections_lock =
@@ -122,9 +122,9 @@ where
 			connection.on_ready(poll, event)?;
 
 			if connection.is_closed() {
-				debug!("Connection {:?} is closed, removing", token);
+				trace!("Connection {:?} is closed, removing", token);
 				connections_lock.remove(&token);
-				debug!(
+				trace!(
 					"Closed {:?}, {} active connections remaining",
 					token,
 					connections_lock.len()
@@ -146,7 +146,7 @@ where
 			self.connections.write().map_err(|_| WebSocketError::LockPoisoning)?;
 		let connection = connections_lock
 			.get_mut(&connection_token.into())
-			.ok_or(WebSocketError::InvalidConnection(connection_token.0))?;
+			.ok_or_else(|| WebSocketError::InvalidConnection(connection_token.0))?;
 		connection.write_message(message)
 	}
 
@@ -223,7 +223,9 @@ where
 		let (server_signal_sender, mut signal_receiver) = channel::<ServerSignal>();
 		self.register_server_signal_sender(server_signal_sender)?;
 
-		let tcp_listener = TcpListener::bind(&socket_addr).map_err(WebSocketError::TcpBindError)?;
+		let tcp_listener = net::TcpListener::bind(socket_addr).expect("Could not listen on port");
+		let tcp_listener =
+			mio::net::TcpListener::from_std(tcp_listener).map_err(WebSocketError::TcpBindError)?;
 		let mut poll = Poll::new()?;
 		poll.register(
 			&tcp_listener,
@@ -245,7 +247,8 @@ where
 
 		// Run the event loop.
 		'outer_event_loop: loop {
-			poll.poll(&mut events, None)?;
+			let num_events = poll.poll(&mut events, None)?;
+			debug!("Number of readiness events: {}", num_events);
 
 			for event in events.iter() {
 				match event.token() {

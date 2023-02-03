@@ -18,15 +18,16 @@
 
 use crate::test::mocks::types::{TestOCallApi, TestRpcResponder, TestSigner, TestTopPool};
 use codec::Encode;
-use ita_stf::{KeyPair, TrustedCall, TrustedCallSigned, TrustedOperation};
+use ita_stf::{TrustedCall, TrustedCallSigned, TrustedOperation};
 use itp_ocall_api::EnclaveAttestationOCallApi;
 use itp_sgx_crypto::ShieldingCryptoEncrypt;
+use itp_stf_primitives::types::KeyPair;
 use itp_top_pool::pool::Options as PoolOptions;
 use itp_top_pool_author::api::SidechainApi;
 use itp_types::{Block as ParentchainBlock, Enclave, ShardIdentifier};
 use sp_core::{ed25519, Pair, H256};
 use sp_runtime::traits::Header as HeaderTrait;
-use std::{sync::Arc, vec::Vec};
+use std::{boxed::Box, sync::Arc, vec::Vec};
 
 pub(crate) fn create_top_pool() -> Arc<TestTopPool> {
 	let rpc_responder = Arc::new(TestRpcResponder::new());
@@ -62,5 +63,5 @@ pub(crate) fn sign_trusted_call<AttestationApi: EnclaveAttestationOCallApi>(
 	from: ed25519::Pair,
 ) -> TrustedCallSigned {
 	let mr_enclave = attestation_api.get_mrenclave_of_self().unwrap();
-	trusted_call.sign(&KeyPair::Ed25519(from), 0, &mr_enclave.m, shard_id)
+	trusted_call.sign(&KeyPair::Ed25519(Box::new(from)), 0, &mr_enclave.m, shard_id)
 }

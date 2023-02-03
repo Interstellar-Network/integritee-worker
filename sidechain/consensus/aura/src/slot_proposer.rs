@@ -15,10 +15,11 @@
 
 */
 
+use codec::Encode;
 use finality_grandpa::BlockNumberOps;
-use itp_sgx_externalities::SgxExternalitiesTrait;
+use itp_sgx_externalities::{SgxExternalitiesTrait, StateHash};
 use itp_stf_executor::traits::StateUpdateProposer;
-use itp_time_utils::now_as_u64;
+use itp_time_utils::now_as_millis;
 use itp_top_pool_author::traits::AuthorApi;
 use itp_types::H256;
 use its_block_composer::ComposeBlock;
@@ -27,7 +28,7 @@ use its_primitives::traits::{
 	Block as SidechainBlockTrait, Header as HeaderTrait, ShardIdentifierFor,
 	SignedBlock as SignedSidechainBlockTrait,
 };
-use its_state::{SidechainDB, SidechainState, SidechainSystemExt, StateHash};
+use its_state::{SidechainState, SidechainSystemExt};
 use log::*;
 use sp_runtime::{
 	traits::{Block, NumberFor},
@@ -66,6 +67,7 @@ where
 	StfExecutor: StateUpdateProposer,
 	ExternalitiesFor<StfExecutor>:
 		SgxExternalitiesTrait + SidechainState + SidechainSystemExt + StateHash,
+	<ExternalitiesFor<StfExecutor> as SgxExternalitiesTrait>::SgxExternalitiesType: Encode,
 	TopPoolAuthor: AuthorApi<H256, ParentchainBlock::Hash> + Send + Sync + 'static,
 	BlockComposer: ComposeBlock<
 			ExternalitiesFor<StfExecutor>,
@@ -102,15 +104,12 @@ where
 				latest_parentchain_header,
 				&self.shard,
 				max_duration,
-				|s| {
-					let mut sidechain_db = SidechainDB::<
-						SignedSidechainBlock::Block,
-						ExternalitiesFor<StfExecutor>,
-					>::new(s);
+				|mut sidechain_db| {
+					sidechain_db.reset_events();
 					sidechain_db
 						.set_block_number(&sidechain_db.get_block_number().map_or(1, |n| n + 1));
-					sidechain_db.set_timestamp(&now_as_u64());
-					sidechain_db.ext
+					sidechain_db.set_timestamp(&now_as_millis());
+					sidechain_db
 				},
 			)
 			.map_err(|e| ConsensusError::Other(e.to_string().into()))?;
@@ -142,7 +141,7 @@ where
 				executed_operation_hashes,
 				self.shard,
 				batch_execution_result.state_hash_before_execution,
-				batch_execution_result.state_after_execution,
+				&batch_execution_result.state_after_execution,
 			)
 			.map_err(|e| ConsensusError::Other(e.to_string().into()))?;
 

@@ -1,24 +1,24 @@
 [package]
 name = "its-validateer-fetch"
-version = "0.8.0"
+version = "0.9.0"
 authors = ["Integritee AG <hello@integritee.network>"]
 edition = "2021"
 
 [dependencies]
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "chain-error"] }
 derive_more = "0.99.16"
 thiserror = "1.0.26"
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "chain-error"] }
 
 # substrate deps
-frame-support = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.27" }
-sp-core = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.27" }
-sp-runtime = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.27" }
-sp-std = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.27" }
+frame-support = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.36" }
+sp-core = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.36" }
+sp-runtime = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.36" }
+sp-std = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.36" }
 
 # local deps
-itp-teerex-storage = { path = "../../core-primitives/teerex-storage", default-features = false }
-itp-storage = { path = "../../core-primitives/storage", default-features = false }
 itp-ocall-api = { path = "../../core-primitives/ocall-api", default-features = false }
+itp-storage = { path = "../../core-primitives/storage", default-features = false }
+itp-teerex-storage = { path = "../../core-primitives/teerex-storage", default-features = false }
 itp-types = { path = "../../core-primitives/types", default-features = false }
 
 [features]

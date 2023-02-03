@@ -7,11 +7,34 @@ This is part of [Integritee](https://integritee.network)
 ## Build and Run
 ~~Please see our [Integritee Book](https://docs.integritee.network/4-development/4.4-sdk) to learn how to build and run this.~~
 
-**WIP** `PATH=/opt/intel/bin:$PATH make && (cd bin && RUST_LOG=warn RUST_BACKTRACE=1 ./integritee-service --clean-reset -P 2090 -p 9990 -r 3490 -w 2091 -h 4545 run --skip-ra --dev)`
+- install SGX SDK
+  - You can find working but (too) specific steps in the [CI](.github/workflows/rust.yml#L31)
+  - Or DIY [official guide](https://download.01.org/intel-sgx/sgx-dcap/1.11/linux/docs/Intel_SGX_SW_Installation_Guide_for_Linux.pdf)
+- setup needed env vars eg `source /opt/intel/sgxsdk/environment`
+  - NOTE: it MUST match the directory where you installed the SDK
+  - NOTE: the PATH MUST contain "Intel binutils"(ie linker etc)
+- compile and run the tests: `make && (cd bin/ && touch spid.txt key.txt && ./integritee-service test --all)` and `cargo test --release`
+  - NOTE: SGX tests MUST be run with a special exe, **NOT** using `cargo test`
+  - IF you get compilation errors like:
+  ```
+    /home/XXX/.cargo/git/checkouts/incubator-teaclave-sgx-sdk-c63c8825343e87f0/d2d339c/sgx_unwind/../sgx_unwind/libunwind/include/pthread_compat.h:39:10: fatal error: sgx_spinlock.h: No such file or directory
+     39 | #include "sgx_spinlock.h"
+  ```
+  It means the SDK is not properly installed and/or the env vars are not properly set.
+
+**WIP** `make && (cd bin && RUST_LOG=warn RUST_BACKTRACE=1 INTERSTELLAR_URI_NODE=http://127.0.0.1:8990 IPFS_ROOT_URL=http://127.0.0.1:5001 ./integritee-service --clean-reset -P 2090 -p 9990 -r 3490 -w 2091 -h 4545 run --skip-ra --dev)`
 
 **WIP**  `(cd cli/ && ./demo_interstellar.sh -p 9990 -P 2090)`
 
-T  o start multiple worker and a node with one simple command: Check out [this README](local-setup/README.md).
+### SGX(enclave) compilation errors
+
+If the root crate compiles but `enclave-runtime` does not with some std related error:
+CHECK with: `cd enclave-runtime/` && `cargo no-std-check --profile=release --manifest-path Cargo.toml`
+
+If this command return a problematic library: CHECK with e.g.: `cargo tree --invert thiserror`
+Please see our [Integritee Book](https://docs.integritee.network/4-development/4.4-sdk) to learn how to build and run this.
+
+To start multiple worker and a node with one simple command: Check out [this README](local-setup/README.md).
 
 ## Docker
 See [docker/README.md](docker/README.md).

@@ -6,45 +6,44 @@ build = "build.rs"
 edition = "2021"
 
 [dependencies]
-hex = "0.4.3"
-log = "0.4"
-env_logger = "0.9"
+async-trait = "0.1.50"
 base58 = "0.2"
 clap = { version = "2.33", features = ["yaml"] }
-lazy_static = "1.4.0"
-parking_lot = "0.12.1"
-thiserror = "1.0"
 dirs = "3.0.2"
-serde = "1.0"
-serde_json = "1.0"
-serde_derive = "1.0"
+env_logger = "0.9"
+futures = "0.3"
+hex = "0.4.3"
 jsonrpsee = { version = "0.2.0", features = ["client", "ws-server", "macros"] }
-async-trait = "0.1.50"
-tokio = { version = "1.6.1", features = ["full"] }
+lazy_static = "1.4.0"
+log = "0.4"
+parking_lot = "0.12.1"
 parse_duration = "2.1.1"
 prometheus = { version = "0.13.0", features = ["process"] }
+serde = "1.0"
+serde_derive = "1.0"
+serde_json = "1.0"
+thiserror = "1.0"
+tokio = { version = "1.6.1", features = ["full"] }
 warp = "0.3"
-futures = "0.3"
 
 # ipfs
 ipfs-api = "0.11.0"
-cid = "0.8"
 sha2 = { version = "0.7", default-features = false }
 
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
-primitive-types = { version = "0.11.1", default-features = false, features = ["codec"] }
+primitive-types = { version = "0.12.1", default-features = false, features = ["codec"] }
 
-sgx_urts = { branch = "master", git = "https://github.com/apache/teaclave-sgx-sdk.git" }
-sgx_types = { branch = "master", git = "https://github.com/apache/teaclave-sgx-sdk.git" }
 sgx_crypto_helper = { branch = "master", git = "https://github.com/apache/teaclave-sgx-sdk.git" }
+sgx_types = { branch = "master", git = "https://github.com/apache/teaclave-sgx-sdk.git" }
+sgx_urts = { branch = "master", git = "https://github.com/apache/teaclave-sgx-sdk.git" }
 
 # local
+itc-parentchain = { path = "../core/parentchain/parentchain-crate" }
 itc-rpc-client = { path = "../core/rpc-client" }
 itc-rpc-server = { path = "../core/rpc-server" }
-itc-parentchain-light-client = { path = "../core/parentchain/light-client" }
-itp-node-api = { path = "../core-primitives/node-api" }
 itp-enclave-api = { path = "../core-primitives/enclave-api" }
 itp-enclave-metrics = { path = "../core-primitives/enclave-metrics" }
+itp-node-api = { path = "../core-primitives/node-api" }
 itp-settings = { path = "../core-primitives/settings" }
 itp-types = { path = "../core-primitives/types" }
 itp-utils = { path = "../core-primitives/utils" }
@@ -55,18 +54,21 @@ its-rpc-handler = { path = "../sidechain/rpc-handler" }
 its-storage = { path = "../sidechain/storage" }
 
 # scs / integritee
-my-node-runtime = { package = "integritee-node-runtime", git = "https://github.com/integritee-network/integritee-node.git", branch = "sdk-v0.10.0-polkadot-v0.9.27" }
-substrate-api-client = { git = "https://github.com/scs/substrate-api-client.git", branch = "polkadot-v0.9.27" }
-teerex-primitives = { git = "https://github.com/integritee-network/pallets.git", branch = "sdk-v0.10.0-polkadot-v0.9.27" }
+my-node-runtime = { package = "integritee-node-runtime", git = "https://github.com/Interstellar-Network/integritee-node.git", branch = "interstellar" }
+substrate-api-client = { git = "https://github.com/scs/substrate-api-client.git", branch = "polkadot-v0.9.36" }
+# commit: "upgrade to Polkadot v0.9.36"
+# NOTE: use the same rev as the node for consistency
+# see also https://github.com/integritee-network/worker/blob/master/Cargo.lock
+teerex-primitives = { git = "https://github.com/integritee-network/pallets.git", rev = "1cdcfaa358f74971a1c6e5cdedb0e203c6c8f71c" }
 
 # Substrate dependencies
-sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.27" }
-pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.27" }
-sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.27" }
-sp-keyring = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.27" }
-frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.27" }
-sp-finality-grandpa = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.27" }
-frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.27" }
+frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.36" }
+frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.36" }
+pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.36" }
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.36" }
+sp-finality-grandpa = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.36" }
+sp-keyring = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.36" }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.36" }
 
 [features]
 default = []
@@ -75,6 +77,7 @@ sidechain = ["itp-settings/sidechain"]
 offchain-worker = ["itp-settings/offchain-worker"]
 production = ["itp-settings/production"]
 teeracle = ["itp-settings/teeracle"]
+dcap = []
 
 [dev-dependencies]
 # crates.io
@@ -82,6 +85,5 @@ anyhow = "1.0.40"
 mockall = "0.11"
 # local
 itc-parentchain-test = { path = "../core/parentchain/test" }
-itp-test = { path = "../core-primitives/test" }
 its-peer-fetch = { path = "../sidechain/peer-fetch", features = ["mocks"] }
 its-test = { path = "../sidechain/test" }

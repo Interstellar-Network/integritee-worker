@@ -141,7 +141,7 @@ if [[ "$OCW_CIRCUITS_STORAGE" == "null" ]]; then
     ${CLIENT} demo-ocw-circuits-submit-config-display-circuits-package
 
     # TODO goto before if and wait in loop until ready
-    echo "Extrinsic started: wait a few seconds(~5-10s) and restart this script"
+    echo "Extrinsic started: wait a few seconds(~45-60s) and restart this script"
     exit 1
 else
     echo "OCW_CIRCUITS_STORAGE already initialized"
@@ -167,7 +167,7 @@ RESULT=$(${CLIENT} trusted --mrenclave "${MRENCLAVE}" --direct get-circuits-pack
 echo "RESULT: ${RESULT}"
 
 # parse $RESULT to get the IPFS cid
-IPFS_CID=$(echo ${RESULT} | awk -F 'message_pgarbled_cid: ' '{print $2}' | awk -F ', message_packmsg_cid:' '{print $1}')
+IPFS_CID=$(echo ${RESULT} | awk -F 'message_pgarbled_cid: ' '{print $2}' | awk -F ', pinpad_pgarbled_cid:' '{print $1}')
 echo "IPFS_CID: ${IPFS_CID}"
 
 

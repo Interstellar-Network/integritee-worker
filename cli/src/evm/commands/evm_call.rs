@@ -23,11 +23,12 @@ use crate::{
 	Cli,
 };
 use codec::Decode;
-use ita_stf::{Index, KeyPair, TrustedCall, TrustedGetter, TrustedOperation};
+use ita_stf::{Index, TrustedCall, TrustedGetter, TrustedOperation};
+use itp_stf_primitives::types::KeyPair;
 use itp_types::AccountId;
 use log::*;
 use sp_core::{crypto::Ss58Codec, Pair, H160, U256};
-use std::vec::Vec;
+use std::{boxed::Box, vec::Vec};
 use substrate_api_client::utils::FromHexString;
 
 #[derive(Parser)]
@@ -78,7 +79,7 @@ impl EvmCallCommands {
 			Some(U256::from(evm_nonce)),
 			Vec::new(),
 		)
-		.sign(&KeyPair::Sr25519(sender), nonce, &mrenclave, &shard)
+		.sign(&KeyPair::Sr25519(Box::new(sender)), nonce, &mrenclave, &shard)
 		.into_trusted_operation(trusted_args.direct);
 		let _ = perform_trusted_operation(cli, trusted_args, &function_call);
 	}
