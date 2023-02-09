@@ -32,10 +32,26 @@ jobs:
 
       # NOTE: we CAN NOT run "cargo test --release" without "make"
       # ELSE: "error: could not find native static library `Enclave_u`, perhaps an -L flag is missing?"
-      - name: Make and Test
+      - name: Make
         run: |
           make
+
+      # TODO move into separate action? ideally into a JS action "post" that setup ccache?
+      # NOTE: remove if using "rust-build-and-test"
+      - name: Print ccache/sccache stats
+        # display stats even if tests failed
+        if: success() || failure()
+        run: |
+          ccache --show-stats || echo "ccache not found!"
+          sccache --show-stats || echo "ccache sccache found!"
+        shell: bash
+
+      - name: integritee-service test --all
+        run: |
           cd bin/ && touch spid.txt key.txt && ./integritee-service test --all
+
+      - name: cargo test --release
+        run: |
           cargo test --release
 
   ##########################################################################
