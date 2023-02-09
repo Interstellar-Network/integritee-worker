@@ -35,10 +35,16 @@
 #
 # Probably b/c of the "bin" dir built locally using sccache
 # Try caching only ~/.cargo/registry/cache cf https://github.com/Swatinem/rust-cache#cache-details
+## BUILD the `integritee-service`
 # - podman build -f build.Dockerfile -t integritee-worker:dev -t ghcr.io/interstellar-network/integritee_service:dev --format docker --build-arg WORKER_MODE_ARG=sidechain --volume ~/.cargo/registry/cache:/root/work/.cargo/registry/git --volume ~/.cargo/git:/root/work/.cargo/git --volume $(pwd)/target/release:/root/work/worker/target/release:rw --volume $(pwd)/enclave-runtime/target/release:/root/work/worker/enclave-runtime/target/release:rw .
 # - CHECK:
 #	- podman run --rm -it --name integritee_service_dev ghcr.io/interstellar-network/integritee_service:dev --clean-reset -P 2090 -p 9990 -r 3490 -w 2091 -h 4545 run --skip-ra --dev
 #	- podman run --rm -it --name integritee_cli_dev --entrypoint /usr/local/bin/integritee-cli ghcr.io/interstellar-network/integritee_service:dev --help
+#
+## BUILD the `integritee-cli` (NOTE: it SHOULD be the previous command, only with added "--target deployed-client"; and different tags)
+# - podman build --target deployed-client -f build.Dockerfile -t integritee-cli:dev -t ghcr.io/interstellar-network/integritee_cli:dev --format docker --build-arg WORKER_MODE_ARG=sidechain --volume ~/.cargo/registry/cache:/root/work/.cargo/registry/git --volume ~/.cargo/git:/root/work/.cargo/git --volume $(pwd)/target/release:/root/work/worker/target/release:rw --volume $(pwd)/enclave-runtime/target/release:/root/work/worker/enclave-runtime/target/release:rw .
+# - CHECK: podman run --rm -it --entrypoint /usr/local/worker-cli/demo_interstellar.sh --env CLIENT_BIN=/usr/local/bin/integritee-cli ghcr.io/interstellar-network/integritee_cli:dev -P 2090 -p 9990 --help
+#   NOTE: you should get a "connection refused"; but the executable MUST start!
 
 ### Builder Stage
 ##################################################
@@ -137,6 +143,10 @@ RUN mkdir ${LOG_DIR}
 
 RUN ldd /usr/local/bin/integritee-cli && \
 	/usr/local/bin/integritee-cli --version
+
+RUN apt-get update && apt-get install -y \
+    curl jq \
+    && rm -rf /var/lib/apt/lists/*
 
 ENTRYPOINT ["/usr/local/bin/integritee-cli"]
 

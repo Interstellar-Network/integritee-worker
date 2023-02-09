@@ -9,6 +9,7 @@
 /bin/*
 !/cli/src/
 !/cli/Cargo.toml
+!/cli/*.sh
 !/core/
 !/core-primitives/
 !/enclave-runtime/src/
