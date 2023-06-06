@@ -40,6 +40,7 @@ use ita_stf::{
 	AccountInfo, Getter, State, StatePayload, TrustedCall, TrustedCallSigned, TrustedGetter,
 	TrustedOperation,
 };
+use itp_node_api::metadata::{metadata_mocks::NodeMetadataMock, provider::NodeMetadataRepository};
 use itp_sgx_crypto::{Aes, StateCrypto};
 use itp_sgx_externalities::{SgxExternalitiesDiffType, SgxExternalitiesTrait, StateHash};
 use itp_stf_executor::{
@@ -90,6 +91,12 @@ pub extern "C" fn test_main_entrance() -> size_t {
 		itp_stf_state_handler::test::sgx_tests::test_file_io_get_state_hash_works,
 		itp_stf_state_handler::test::sgx_tests::test_list_state_ids_ignores_files_not_matching_the_pattern,
 		itp_stf_state_handler::test::sgx_tests::test_in_memory_state_initializes_from_shard_directory,
+		itp_sgx_crypto::tests::aes_sealing_works,
+		itp_sgx_crypto::tests::using_get_aes_repository_twice_initializes_key_only_once,
+		itp_sgx_crypto::tests::ed25529_sealing_works,
+		itp_sgx_crypto::tests::using_get_ed25519_repository_twice_initializes_key_only_once,
+		itp_sgx_crypto::tests::rsa3072_sealing_works,
+		itp_sgx_crypto::tests::using_get_rsa3072_repository_twice_initializes_key_only_once,
 		test_compose_block,
 		test_submit_trusted_call_to_top_pool,
 		test_submit_trusted_getter_to_top_pool,
@@ -124,11 +131,12 @@ pub extern "C" fn test_main_entrance() -> size_t {
 		enclave_rw_lock_works,
 		// unit tests of stf_executor
 		stf_executor_tests::propose_state_update_always_executes_preprocessing_step,
-        stf_executor_tests::propose_state_update_executes_no_trusted_calls_given_no_time,
+		stf_executor_tests::propose_state_update_executes_no_trusted_calls_given_no_time,
 		stf_executor_tests::propose_state_update_executes_only_one_trusted_call_given_not_enough_time,
 		stf_executor_tests::propose_state_update_executes_all_calls_given_enough_time,
 		enclave_signer_tests::enclave_signer_signatures_are_valid,
 		enclave_signer_tests::derive_key_is_deterministic,
+		enclave_signer_tests::nonce_is_computed_correctly,
 		state_getter_tests::state_getter_works,
 		// sidechain integration tests
 		sidechain_aura_tests::produce_sidechain_block_and_import_it,
@@ -152,6 +160,10 @@ pub extern "C" fn test_main_entrance() -> size_t {
 
 		// EVM tests
 		run_evm_tests,
+
+		// light-client-test
+		itc_parentchain::light_client::io::sgx_tests::init_parachain_light_client_works,
+		itc_parentchain::light_client::io::sgx_tests::sealing_creates_backup,
 
 		// these unit test (?) need an ipfs node running..
 		// ipfs::test_creates_ipfs_content_struct_works,
@@ -596,7 +608,8 @@ pub fn test_retrieve_events() {
 		transfer_value,
 	)
 	.sign(&sender.clone().into(), 0, &mrenclave, &shard);
-	TestStf::execute_call(&mut state, trusted_call, &mut opaque_vec, [0u8, 1u8]).unwrap();
+	let repo = Arc::new(NodeMetadataRepository::<NodeMetadataMock>::default());
+	TestStf::execute_call(&mut state, trusted_call, &mut opaque_vec, repo).unwrap();
 
 	assert_eq!(TestStf::get_events(&mut state).len(), 3);
 }
@@ -619,7 +632,8 @@ pub fn test_retrieve_event_count() {
 	.sign(&sender.clone().into(), 0, &mrenclave, &shard);
 
 	// when
-	TestStf::execute_call(&mut state, trusted_call, &mut opaque_vec, [0u8, 1u8]).unwrap();
+	let repo = Arc::new(NodeMetadataRepository::<NodeMetadataMock>::default());
+	TestStf::execute_call(&mut state, trusted_call, &mut opaque_vec, repo).unwrap();
 
 	let event_count = TestStf::get_event_count(&mut state);
 	assert_eq!(event_count, 3);
@@ -640,7 +654,8 @@ pub fn test_reset_events() {
 		transfer_value,
 	)
 	.sign(&sender.clone().into(), 0, &mrenclave, &shard);
-	TestStf::execute_call(&mut state, trusted_call, &mut opaque_vec, [0u8, 1u8]).unwrap();
+	let repo = Arc::new(NodeMetadataRepository::<NodeMetadataMock>::default());
+	TestStf::execute_call(&mut state, trusted_call, &mut opaque_vec, repo).unwrap();
 	let receiver_acc_info = TestStf::get_account_data(&mut state, &receiver.public().into());
 	assert_eq!(receiver_acc_info.free, transfer_value);
 	// Ensure that there really have been events generated.

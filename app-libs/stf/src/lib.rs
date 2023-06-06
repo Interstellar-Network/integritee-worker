@@ -33,6 +33,8 @@ pub use my_node_runtime::{Balance, Index};
 
 use codec::{Decode, Encode};
 use derive_more::Display;
+use itp_node_api_metadata::Error as MetadataError;
+use itp_node_api_metadata_provider::Error as MetadataProviderError;
 use itp_stf_primitives::types::AccountId;
 use std::string::String;
 
@@ -67,10 +69,23 @@ pub enum StfError {
 	Dispatch(String),
 	#[display(fmt = "Not enough funds to perform operation")]
 	MissingFunds,
-	#[display(fmt = "Invalid Nonce {:?}", _0)]
-	InvalidNonce(Index),
+	#[display(fmt = "Invalid Nonce {:?} != {:?}", _0, _1)]
+	InvalidNonce(Index, Index),
 	StorageHashMismatch,
 	InvalidStorageDiff,
+	InvalidMetadata,
+}
+
+impl From<MetadataError> for StfError {
+	fn from(_e: MetadataError) -> Self {
+		StfError::InvalidMetadata
+	}
+}
+
+impl From<MetadataProviderError> for StfError {
+	fn from(_e: MetadataProviderError) -> Self {
+		StfError::InvalidMetadata
+	}
 }
 
 #[derive(Encode, Decode, Clone, Debug, PartialEq, Eq)]
@@ -110,6 +125,14 @@ impl TrustedOperation {
 		match self {
 			TrustedOperation::direct_call(c) => Some(c),
 			TrustedOperation::indirect_call(c) => Some(c),
+			_ => None,
+		}
+	}
+
+	pub fn signed_caller_account(&self) -> Option<&AccountId> {
+		match self {
+			TrustedOperation::direct_call(c) => Some(c.call.sender_account()),
+			TrustedOperation::indirect_call(c) => Some(c.call.sender_account()),
 			_ => None,
 		}
 	}

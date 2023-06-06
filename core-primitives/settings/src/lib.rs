@@ -42,17 +42,13 @@ pub mod files {
 	pub static SIDECHAIN_PURGE_LIMIT: u64 = 100; // keep the last.. sidechainblocks when purging
 
 	// used by enclave
-	pub const RSA3072_SEALED_KEY_FILE: &str = "rsa3072_key_sealed.bin";
-	pub const SEALED_SIGNER_SEED_FILE: &str = "ed25519_key_sealed.bin";
-	pub const AES_KEY_FILE_AND_INIT_V: &str = "aes_key_sealed.bin";
-	pub const LIGHT_CLIENT_DB: &str = "light_client_db.bin";
+	/// Path to the light-client db.
+	pub const LIGHT_CLIENT_DB_PATH: &str = "light_client_db";
 
 	pub const RA_DUMP_CERT_DER_FILE: &str = "ra_dump_cert.der";
 
 	// used by worker and enclave
 	pub const SHARDS_PATH: &str = "shards";
-	pub const ENCRYPTED_STATE_FILE: &str = "state.bin";
-	pub const LAST_SLOT_BIN: &str = "last_slot.bin";
 
 	#[cfg(feature = "production")]
 	pub static RA_SPID_FILE: &str = "spid_production.txt";
@@ -71,7 +67,7 @@ pub mod files {
 /// Settings concerning the worker
 pub mod worker {
 	// the maximum size of any extrinsic that the enclave will ever generate in B
-	pub const EXTRINSIC_MAX_SIZE: usize = 5500;
+	pub const EXTRINSIC_MAX_SIZE: usize = 13_000;
 	// the maximum size of the header
 	pub const HEADER_MAX_SIZE: usize = 200;
 	// maximum size of shielding key
@@ -95,7 +91,7 @@ pub mod worker {
 pub mod sidechain {
 	use core::time::Duration;
 
-	pub static SLOT_DURATION: Duration = Duration::from_millis(600);
+	pub static SLOT_DURATION: Duration = Duration::from_millis(1000);
 }
 
 /// Settings concerning the enclave

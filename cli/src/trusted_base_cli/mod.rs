@@ -22,12 +22,13 @@ use crate::{
 			ocw_garble_garble_and_strip_display_circuits_package_signed,
 			ocw_garble_get_most_recent_circuits_package, tx_validation_check_input,
 		},
+		nonce::NonceCommand,
 		set_balance::SetBalanceCommand,
 		transfer::TransferCommand,
 		unshield_funds::UnshieldFundsCommand,
 	},
+	trusted_cli::TrustedCli,
 	trusted_command_utils::get_keystore_path,
-	trusted_commands::TrustedArgs,
 	Cli, CliResult, CliResultOk,
 };
 use log::*;
@@ -38,7 +39,7 @@ use substrate_client_keystore::{KeystoreExt, LocalKeystore};
 mod commands;
 
 #[derive(Subcommand)]
-pub enum TrustedBaseCli {
+pub enum TrustedBaseCommand {
 	/// generates a new incognito account for the given shard
 	NewAccount,
 
@@ -56,6 +57,10 @@ pub enum TrustedBaseCli {
 
 	/// Transfer funds from an incognito account to an parentchain account
 	UnshieldFunds(UnshieldFundsCommand),
+
+	/// gets the nonce of a given account, taking the pending trusted calls
+	/// in top pool in consideration
+	Nonce(NonceCommand),
 
 	/// [interstellar]
 	GarbleAndStripDisplayCircuitsPackageSigned {
@@ -85,32 +90,33 @@ pub enum TrustedBaseCli {
 	},
 }
 
-impl TrustedBaseCli {
-	pub fn run(&self, cli: &Cli, trusted_args: &TrustedArgs) -> CliResult {
+impl TrustedBaseCommand {
+	pub fn run(&self, cli: &Cli, trusted_cli: &TrustedCli) -> CliResult {
 		match self {
-			TrustedBaseCli::NewAccount => new_account(trusted_args),
-			TrustedBaseCli::ListAccounts => list_accounts(trusted_args),
-			TrustedBaseCli::Transfer(cmd) => cmd.run(cli, trusted_args),
-			TrustedBaseCli::SetBalance(cmd) => cmd.run(cli, trusted_args),
-			TrustedBaseCli::Balance(cmd) => cmd.run(cli, trusted_args),
-			TrustedBaseCli::UnshieldFunds(cmd) => cmd.run(cli, trusted_args),
+			TrustedBaseCommand::NewAccount => new_account(trusted_cli),
+			TrustedBaseCommand::ListAccounts => list_accounts(trusted_cli),
+			TrustedBaseCommand::Transfer(cmd) => cmd.run(cli, trusted_cli),
+			TrustedBaseCommand::SetBalance(cmd) => cmd.run(cli, trusted_cli),
+			TrustedBaseCommand::Balance(cmd) => cmd.run(cli, trusted_cli),
+			TrustedBaseCommand::UnshieldFunds(cmd) => cmd.run(cli, trusted_cli),
+			TrustedBaseCommand::Nonce(cmd) => cmd.run(cli, trusted_cli),
 			// [interstellar]
-			TrustedBaseCli::GarbleAndStripDisplayCircuitsPackageSigned { account, tx_msg } =>
+			TrustedBaseCommand::GarbleAndStripDisplayCircuitsPackageSigned { account, tx_msg } =>
 				ocw_garble_garble_and_strip_display_circuits_package_signed(
 					cli,
-					trusted_args,
+					trusted_cli,
 					account,
 					tx_msg,
 				),
-			TrustedBaseCli::GetCircuitsPackage { account } =>
-				ocw_garble_get_most_recent_circuits_package(cli, trusted_args, account),
-			TrustedBaseCli::TxCheckInput { account, ipfs_cid, input_digits } =>
-				tx_validation_check_input(cli, trusted_args, account, ipfs_cid, input_digits),
+			TrustedBaseCommand::GetCircuitsPackage { account } =>
+				ocw_garble_get_most_recent_circuits_package(cli, trusted_cli, account),
+			TrustedBaseCommand::TxCheckInput { account, ipfs_cid, input_digits } =>
+				tx_validation_check_input(cli, trusted_cli, account, ipfs_cid, input_digits),
 		}
 	}
 }
 
-fn new_account(trusted_args: &TrustedArgs) -> CliResult {
+fn new_account(trusted_args: &TrustedCli) -> CliResult {
 	let store = LocalKeystore::open(get_keystore_path(trusted_args), None).unwrap();
 	let key: sr25519::AppPair = store.generate().unwrap();
 	drop(store);
@@ -121,7 +127,7 @@ fn new_account(trusted_args: &TrustedArgs) -> CliResult {
 	Ok(CliResultOk::PubKeysBase58 { pubkeys_sr25519: Some(vec![key_str]), pubkeys_ed25519: None })
 }
 
-fn list_accounts(trusted_args: &TrustedArgs) -> CliResult {
+fn list_accounts(trusted_args: &TrustedCli) -> CliResult {
 	let store = LocalKeystore::open(get_keystore_path(trusted_args), None).unwrap();
 	info!("sr25519 keys:");
 	for pubkey in store.public_keys::<sr25519::AppPublic>().unwrap().into_iter() {

@@ -40,7 +40,7 @@ use substrate_client_keystore::{KeystoreExt, LocalKeystore};
 mod commands;
 
 #[derive(Subcommand)]
-pub enum BaseCli {
+pub enum BaseCommand {
 	/// query parentchain balance for AccountId
 	Balance(BalanceCommand),
 
@@ -72,19 +72,19 @@ pub enum BaseCli {
 	ShieldFunds(ShieldFundsCommand),
 }
 
-impl BaseCli {
+impl BaseCommand {
 	pub fn run(&self, cli: &Cli) -> CliResult {
 		match self {
-			BaseCli::Balance(cmd) => cmd.run(cli),
-			BaseCli::NewAccount => new_account(),
-			BaseCli::ListAccounts => list_accounts(),
-			BaseCli::PrintMetadata => print_metadata(cli),
-			BaseCli::PrintSgxMetadata => print_sgx_metadata(cli),
-			BaseCli::Faucet(cmd) => cmd.run(cli),
-			BaseCli::Transfer(cmd) => cmd.run(cli),
-			BaseCli::ListWorkers => list_workers(cli),
-			BaseCli::Listen(cmd) => cmd.run(cli),
-			BaseCli::ShieldFunds(cmd) => cmd.run(cli),
+			BaseCommand::Balance(cmd) => cmd.run(cli),
+			BaseCommand::NewAccount => new_account(),
+			BaseCommand::ListAccounts => list_accounts(),
+			BaseCommand::PrintMetadata => print_metadata(cli),
+			BaseCommand::PrintSgxMetadata => print_sgx_metadata(cli),
+			BaseCommand::Faucet(cmd) => cmd.run(cli),
+			BaseCommand::Transfer(cmd) => cmd.run(cli),
+			BaseCommand::ListWorkers => list_workers(cli),
+			BaseCommand::Listen(cmd) => cmd.run(cli),
+			BaseCommand::ShieldFunds(cmd) => cmd.run(cli),
 		}
 	}
 }
@@ -126,15 +126,16 @@ fn list_accounts() -> CliResult {
 }
 
 fn print_metadata(cli: &Cli) -> CliResult {
-	let metadata = get_chain_api(cli).get_metadata().unwrap();
-	println!("Metadata:\n {}", Metadata::pretty_format(&metadata).unwrap());
-	Ok(CliResultOk::Metadata { metadata })
+	let api = get_chain_api(cli);
+	let meta = api.metadata();
+	println!("Metadata:\n {}", Metadata::pretty_format(&meta.runtime_metadata()).unwrap());
+	Ok(CliResultOk::Metadata { metadata: meta.clone() })
 }
 
 fn print_sgx_metadata(cli: &Cli) -> CliResult {
 	let worker_api_direct = get_worker_api_direct(cli);
 	let metadata = worker_api_direct.get_state_metadata().unwrap();
-	println!("Metadata:\n {}", Metadata::pretty_format(&metadata).unwrap());
+	println!("Metadata:\n {}", Metadata::pretty_format(metadata.runtime_metadata()).unwrap());
 	Ok(CliResultOk::Metadata { metadata })
 }
 
@@ -142,7 +143,9 @@ fn list_workers(cli: &Cli) -> CliResult {
 	let api = get_chain_api(cli);
 	let wcount = api.enclave_count(None).unwrap();
 	println!("number of workers registered: {}", wcount);
+
 	let mut mr_enclaves = Vec::with_capacity(wcount as usize);
+
 	for w in 1..=wcount {
 		let enclave = api.enclave(w, None).unwrap();
 		if enclave.is_none() {
