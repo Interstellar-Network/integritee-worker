@@ -13,6 +13,7 @@ This is part of [Integritee](https://integritee.network)
 - setup needed env vars eg `source /opt/intel/sgxsdk/environment`
   - NOTE: it MUST match the directory where you installed the SDK
   - NOTE: the PATH MUST contain "Intel binutils"(ie linker etc)
+  - NOTE: it WILL NOT build with latest compiler; eg use `export CC=gcc-11 CXX=g++-11`
 - compile and run the tests: `make && (cd bin/ && touch spid.txt key.txt && ./integritee-service test --all)` and `cargo test --release`
   - NOTE: SGX tests MUST be run with a special exe, **NOT** using `cargo test`
   - IF you get compilation errors like:
