@@ -2926,7 +2926,7 @@ dependencies = [
 [[package]]
 name = "integritee-node-runtime"
 version = "1.0.32"
-source = "git+https://github.com/Interstellar-Network/integritee-node.git?branch=bump-polkadot-v0.9.39#4186f18139cf38632601a95441232554720aab26"
+source = "git+https://github.com/Interstellar-Network/integritee-node.git?rev=a5b8eb4#a5b8eb4c6b22f58813f914c1e72a0c9217e4eb48"
 dependencies = [
  "frame-executive",
  "frame-support",

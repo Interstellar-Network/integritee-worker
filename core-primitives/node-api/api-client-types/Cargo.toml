@@ -6,7 +6,7 @@ edition = "2021"
 
 [dependencies]
 # integritee-node
-my-node-runtime = { package = "integritee-node-runtime", optional = true, git = "https://github.com/Interstellar-Network/integritee-node.git", branch = "bump-polkadot-v0.9.39" }
+my-node-runtime = { package = "integritee-node-runtime", optional = true, git = "https://github.com/Interstellar-Network/integritee-node.git", rev = "a5b8eb4" }
 
 # scs
 substrate-api-client = { default-features = false, git = "https://github.com/scs/substrate-api-client.git", branch = "polkadot-v0.9.39" }

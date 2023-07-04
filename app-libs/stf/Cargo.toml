@@ -39,7 +39,7 @@ sp-core = { default-features = false, features = ["full_crypto"], git = "https:/
 sp-runtime = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.39" }
 
 # scs / integritee
-my-node-runtime = { package = "integritee-node-runtime", optional = true, git = "https://github.com/Interstellar-Network/integritee-node.git", branch = "bump-polkadot-v0.9.39" }
+my-node-runtime = { package = "integritee-node-runtime", optional = true, git = "https://github.com/Interstellar-Network/integritee-node.git", rev = "a5b8eb4" }
 pallet-parentchain = { default-features = false, git = "https://github.com/integritee-network/pallets.git", branch = "polkadot-v0.9.39" }
 
 # [interstellar]
