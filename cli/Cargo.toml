@@ -25,7 +25,7 @@ thiserror = "1.0"
 ws = { version = "0.9.1", features = ["ssl"] }
 
 # scs / integritee
-my-node-runtime = { package = "integritee-node-runtime", git = "https://github.com/Interstellar-Network/integritee-node.git", rev = "a5b8eb4" }
+my-node-runtime = { package = "integritee-node-runtime", git = "https://github.com/Interstellar-Network/integritee-node.git", rev = "b7bb339445dc8d69e6920fa7d88e4548e8bebb7c" }
 pallet-evm = { optional = true, git = "https://github.com/integritee-network/frontier.git", branch = "polkadot-v0.9.39" }
 pallet-teerex = { git = "https://github.com/integritee-network/pallets.git", branch = "polkadot-v0.9.39" }
 # `default-features = false` to remove the jsonrpsee dependency.
@@ -56,7 +56,7 @@ itp-utils = { path = "../core-primitives/utils" }
 # [interstellar]
 pallet-mobile-registry = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "main" }
 pallet-ocw-circuits = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "main" }
-pallet-ocw-garble = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "main" }
+pallet-ocw-garble = { version = "5.0.0", default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "main" }
 pallet-tx-validation = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "main" }
 snafu = { version = "0.7", default-features = false }
 

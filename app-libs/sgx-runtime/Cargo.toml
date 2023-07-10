@@ -52,7 +52,7 @@ pallet-parentchain = { default-features = false, git = "https://github.com/integ
 # [interstellar]
 pallet-mobile-registry = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "main" }
 pallet-ocw-circuits = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "main" }
-pallet-ocw-garble = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "main" }
+pallet-ocw-garble = { version = "5.0.0", default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "main" }
 pallet-tx-validation = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "main" }
 pallet-tx-registry = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "main" }
 

@@ -111,18 +111,7 @@ checksum = "884391ef1066acaa41e766ba8f596341b96e93ce34f9a43e7d24bf0a0eaf0561"
 dependencies = [
  "aes-soft",
  "aesni",
- "cipher 0.2.5",
-]
-
-[[package]]
-name = "aes"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "433cfd6710c9986c576a25ca913c39d66a6474107b406f34f91d4a8923395241"
-dependencies = [
- "cfg-if 1.0.0",
- "cipher 0.4.4",
- "cpufeatures",
+ "cipher",
 ]
 
 [[package]]
@@ -131,7 +120,7 @@ version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be14c7498ea50828a38d0e24a765ed2effe92a705885b57d029cd67d45744072"
 dependencies = [
- "cipher 0.2.5",
+ "cipher",
  "opaque-debug 0.3.0",
 ]
 
@@ -141,7 +130,7 @@ version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ea2e11f5e94c2f7d386164cc2aa1f97823fed6f259e486940a71c174dd01b0ce"
 dependencies = [
- "cipher 0.2.5",
+ "cipher",
  "opaque-debug 0.3.0",
 ]
 
@@ -299,12 +288,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "auto_ops"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7460f7dd8e100147b82a63afca1a20eb6c231ee36b90ba7272e14951cb58af59"
-
-[[package]]
 name = "autocfg"
 version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -389,14 +372,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8c3c1a368f70d6cf7302d78f8f7093da241fb8e8807c05cc9e51a125895a6d5b"
 
 [[package]]
-name = "base_conversion"
-version = "0.4.0"
-source = "git+https://github.com/Interstellar-Network/swanky.git?branch=interstellar-initial#f4c0f3567d6d7ea8f034db80d6af8de4c08f91d6"
-dependencies = [
- "cc",
-]
-
-[[package]]
 name = "beef"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -462,6 +437,7 @@ checksum = "1bc2832c24239b0141d5674bb9174f9d68a8b5b3f2753311927c172ca46f7e9c"
 dependencies = [
  "funty",
  "radium",
+ "serde 1.0.163",
  "tap",
  "wyz",
 ]
@@ -746,19 +722,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "cipher"
-version = "0.4.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "773f3b9af64447d2ce9850330c473515014aa235e6a783b02db81ff39e4a3dad"
-dependencies = [
- "crypto-common",
- "inout",
-]
-
-[[package]]
 name = "circuits-storage-common"
 version = "0.1.0"
-source = "git+https://github.com/Interstellar-Network/pallets?branch=main#09e3bc28ac440eee84d38db13e30b91329a8330f"
+source = "git+https://github.com/Interstellar-Network/pallets?branch=main#5d4200eef7dd535a5a012ac29d0437c95902d062"
 dependencies = [
  "frame-support",
  "parity-scale-codec",
@@ -1619,21 +1585,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4443176a9f2c162692bd3d352d745ef9413eec5782a80d8fd6f8a1ac692a07f7"
 
 [[package]]
-name = "fancy-garbling"
-version = "0.4.0"
-source = "git+https://github.com/Interstellar-Network/swanky.git?branch=interstellar-initial#f4c0f3567d6d7ea8f034db80d6af8de4c08f91d6"
-dependencies = [
- "base_conversion",
- "itertools",
- "ocelot",
- "rand 0.8.5",
- "scuttlebutt",
- "serde 1.0.163",
- "serde_json 1.0.96",
- "sgx_tstd",
-]
-
-[[package]]
 name = "fastrand"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2398,6 +2349,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "43a3c133739dddd0d2990f9a4bdf8eb4b21ef50e4851ca85ab661199821d510e"
 dependencies = [
  "ahash 0.8.3",
+ "serde 1.0.163",
 ]
 
 [[package]]
@@ -2846,15 +2798,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8e04e2fd2b8188ea827b32ef11de88377086d690286ab35747ef7f9bf3ccb590"
 
 [[package]]
-name = "inout"
-version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0c10553d664a4d0bcff9f4215d0aac67a639cc68ef660840afe309b807bc9f5"
-dependencies = [
- "generic-array 0.14.7",
-]
-
-[[package]]
 name = "instant"
 version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2926,7 +2869,7 @@ dependencies = [
 [[package]]
 name = "integritee-node-runtime"
 version = "1.0.32"
-source = "git+https://github.com/Interstellar-Network/integritee-node.git?rev=a5b8eb4#a5b8eb4c6b22f58813f914c1e72a0c9217e4eb48"
+source = "git+https://github.com/Interstellar-Network/integritee-node.git?rev=b7bb339445dc8d69e6920fa7d88e4548e8bebb7c#b7bb339445dc8d69e6920fa7d88e4548e8bebb7c"
 dependencies = [
  "frame-executive",
  "frame-support",
@@ -3092,7 +3035,7 @@ dependencies = [
 [[package]]
 name = "ipfs-client-http-req"
 version = "0.2.0"
-source = "git+https://github.com/Interstellar-Network/lib-garble-rs.git?branch=main#ba3a530518e43e92ad4e9726beaaa4c338c80e1f"
+source = "git+https://github.com/Interstellar-Network/lib-garble-rs.git?branch=main#dd1b292429626f42102831afd01f3ab3256a719a"
 dependencies = [
  "http-grpc-client",
  "log 0.4.18",
@@ -3758,7 +3701,7 @@ version = "0.9.0"
 name = "itp-sgx-crypto"
 version = "0.9.0"
 dependencies = [
- "aes 0.6.0",
+ "aes",
  "derive_more",
  "itp-settings",
  "itp-sgx-io",
@@ -4579,20 +4522,25 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 
 [[package]]
 name = "lib-garble-rs"
-version = "0.2.0"
-source = "git+https://github.com/Interstellar-Network/lib-garble-rs.git?branch=main#ba3a530518e43e92ad4e9726beaaa4c338c80e1f"
+version = "2.0.0"
+source = "git+https://github.com/Interstellar-Network/lib-garble-rs.git?branch=main#dd1b292429626f42102831afd01f3ab3256a719a"
 dependencies = [
+ "bitvec",
  "bytes 1.4.0",
- "fancy-garbling",
+ "hashbrown 0.13.2",
  "image",
  "imageproc",
+ "log 0.4.18",
  "num_enum",
  "postcard 1.0.4",
  "prost 0.11.3",
+ "rand 0.8.5",
+ "rand_chacha 0.3.1",
+ "rayon",
  "rusttype",
  "serde 1.0.163",
- "sgx_tstd",
  "snafu",
+ "xxhash-rust",
 ]
 
 [[package]]
@@ -5431,23 +5379,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "ocelot"
-version = "0.4.0"
-source = "git+https://github.com/Interstellar-Network/swanky.git?branch=interstellar-initial#f4c0f3567d6d7ea8f034db80d6af8de4c08f91d6"
-dependencies = [
- "libc",
- "rand 0.8.5",
- "scuttlebutt",
- "sgx_tstd",
-]
-
-[[package]]
 name = "ofb"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f5e609fc8b72da3dabd56427be9489d8a9f4bd2e4dc41660dd033c3c8e90b93c"
 dependencies = [
- "cipher 0.2.5",
+ "cipher",
 ]
 
 [[package]]
@@ -5729,7 +5666,7 @@ dependencies = [
 [[package]]
 name = "pallet-mobile-registry"
 version = "4.0.0-dev"
-source = "git+https://github.com/Interstellar-Network/pallets?branch=main#09e3bc28ac440eee84d38db13e30b91329a8330f"
+source = "git+https://github.com/Interstellar-Network/pallets?branch=main#5d4200eef7dd535a5a012ac29d0437c95902d062"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5759,7 +5696,7 @@ dependencies = [
 [[package]]
 name = "pallet-ocw-circuits"
 version = "4.0.0-dev"
-source = "git+https://github.com/Interstellar-Network/pallets?branch=main#09e3bc28ac440eee84d38db13e30b91329a8330f"
+source = "git+https://github.com/Interstellar-Network/pallets?branch=main#5d4200eef7dd535a5a012ac29d0437c95902d062"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5781,8 +5718,8 @@ dependencies = [
 
 [[package]]
 name = "pallet-ocw-garble"
-version = "4.0.0-dev"
-source = "git+https://github.com/Interstellar-Network/pallets?branch=main#09e3bc28ac440eee84d38db13e30b91329a8330f"
+version = "5.0.0"
+source = "git+https://github.com/Interstellar-Network/pallets?branch=main#5d4200eef7dd535a5a012ac29d0437c95902d062"
 dependencies = [
  "bytes 1.4.0",
  "circuits-storage-common",
@@ -6058,7 +5995,7 @@ dependencies = [
 [[package]]
 name = "pallet-tx-registry"
 version = "4.0.0-dev"
-source = "git+https://github.com/Interstellar-Network/pallets?branch=main#09e3bc28ac440eee84d38db13e30b91329a8330f"
+source = "git+https://github.com/Interstellar-Network/pallets?branch=main#5d4200eef7dd535a5a012ac29d0437c95902d062"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -6072,7 +6009,7 @@ dependencies = [
 [[package]]
 name = "pallet-tx-validation"
 version = "4.0.0-dev"
-source = "git+https://github.com/Interstellar-Network/pallets?branch=main#09e3bc28ac440eee84d38db13e30b91329a8330f"
+source = "git+https://github.com/Interstellar-Network/pallets?branch=main#5d4200eef7dd535a5a012ac29d0437c95902d062"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -7018,7 +6955,7 @@ version = "0.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b313b91fcdc6719ad41fa2dad2b7e810b03833fae4bf911950e15529a5f04439"
 dependencies = [
- "num 0.4.0",
+ "num 0.2.1",
 ]
 
 [[package]]
@@ -7338,20 +7275,6 @@ checksum = "b362b83898e0e69f38515b82ee15aa80636befe47c3b6d3d89a911e78fc228ce"
 dependencies = [
  "ring 0.16.20 (registry+https://github.com/rust-lang/crates.io-index)",
  "untrusted",
-]
-
-[[package]]
-name = "scuttlebutt"
-version = "0.4.0"
-source = "git+https://github.com/Interstellar-Network/swanky.git?branch=interstellar-initial#f4c0f3567d6d7ea8f034db80d6af8de4c08f91d6"
-dependencies = [
- "aes 0.8.2",
- "auto_ops",
- "rand 0.8.5",
- "rand_chacha 0.3.1",
- "rand_core 0.6.4",
- "serde 1.0.163",
- "sgx_tstd",
 ]
 
 [[package]]
@@ -9358,7 +9281,7 @@ version = "1.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
- "cfg-if 1.0.0",
+ "cfg-if 0.1.10",
  "digest 0.10.7",
  "rand 0.8.5",
  "static_assertions",
@@ -10321,6 +10244,12 @@ dependencies = [
  "rkyv",
  "xous",
 ]
+
+[[package]]
+name = "xxhash-rust"
+version = "0.8.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "735a71d46c4d68d71d4b24d03fdc2b98e38cea81730595801db779c04fe80d70"
 
 [[package]]
 name = "yaml-rust"
