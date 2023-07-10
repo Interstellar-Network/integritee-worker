@@ -212,8 +212,3 @@ sgx_types = { version = "1.1.6", git = "https://github.com/apache/incubator-teac
 # [patch."https://github.com/Interstellar-Network/rs-common.git"]
 # http-grpc-client = { path = "../rs-common/http-grpc-client/" }
 ################################################################################
-
-# that way we can have useable build(ie fast enough) but with debug support(ie breakpoints)
-# TODO custom profile?
-[profile.release]
-debug = true
