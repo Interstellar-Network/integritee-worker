@@ -13,8 +13,8 @@
 
 use crate::{
 	get_layer_two_nonce,
+	trusted_cli::TrustedCli,
 	trusted_command_utils::{get_identifiers, get_pair_from_str},
-	trusted_commands::TrustedArgs,
 	trusted_operation::perform_trusted_operation,
 	Cli, CliError, CliResult, CliResultOk,
 };
@@ -29,7 +29,7 @@ use std::boxed::Box;
 /// pallet ocw-garble: garble_and_strip_display_circuits_package_signed
 pub(crate) fn ocw_garble_garble_and_strip_display_circuits_package_signed(
 	cli: &Cli,
-	trusted_args: &TrustedArgs,
+	trusted_args: &TrustedCli,
 	player_creator: &str,
 	tx_msg: &str,
 ) -> CliResult {
@@ -58,7 +58,7 @@ pub(crate) fn ocw_garble_garble_and_strip_display_circuits_package_signed(
 /// pallet tx-validation: check_input
 pub(crate) fn tx_validation_check_input(
 	cli: &Cli,
-	trusted_args: &TrustedArgs,
+	trusted_args: &TrustedCli,
 	player_creator: &str,
 	ipfs_cid: &str,
 	input_digits: &Vec<u8>,
@@ -90,7 +90,7 @@ pub(crate) fn tx_validation_check_input(
 /// Query circuits state for a specific account.
 pub(crate) fn ocw_garble_get_most_recent_circuits_package(
 	cli: &Cli,
-	trusted_args: &TrustedArgs,
+	trusted_args: &TrustedCli,
 	arg_account: &str,
 ) -> CliResult {
 	// TODO? apparently the "getters" does not return a value, so we MUST use

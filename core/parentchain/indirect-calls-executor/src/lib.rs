@@ -14,7 +14,12 @@
 	limitations under the License.
 
 */
-//! Indirect calls execution logic.
+//! Execute indirect calls, i.e. extrinsics extracted from parentchain blocks.
+//!
+//! The core struct of this crate is the [IndirectCallsExecutor] executor. It scans parentchain
+//! blocks for relevant extrinsics, derives an indirect call for those and dispatches the
+//! indirect call.
+
 #![feature(trait_alias)]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(test, feature(assert_matches))]
@@ -31,7 +36,16 @@ pub mod sgx_reexport_prelude {
 	pub use futures_sgx as futures;
 	pub use thiserror_sgx as thiserror;
 }
-pub mod error;
-pub mod indirect_calls_executor;
 
-pub use indirect_calls_executor::*;
+mod event_filter;
+mod executor;
+mod traits;
+
+pub mod error;
+pub mod filter_metadata;
+pub mod indirect_calls;
+pub mod parentchain_parser;
+
+pub use error::{Error, Result};
+pub use executor::IndirectCallsExecutor;
+pub use traits::{ExecuteIndirectCalls, IndirectDispatch, IndirectExecutor};

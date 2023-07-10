@@ -18,6 +18,9 @@ sgx_tstd = { branch = "master", features = ["untrusted_fs", "net", "backtrace"],
 # local crates
 ita-sgx-runtime = { default-features = false, path = "../sgx-runtime" }
 itp-hashing = { default-features = false, path = "../../core-primitives/hashing" }
+itp-node-api = { default-features = false, path = "../../core-primitives/node-api" }
+itp-node-api-metadata = { default-features = false, path = "../../core-primitives/node-api/metadata" }
+itp-node-api-metadata-provider = { default-features = false, path = "../../core-primitives/node-api/metadata-provider" }
 itp-sgx-externalities = { default-features = false, path = "../../core-primitives/substrate-sgx/externalities" }
 itp-stf-interface = { default-features = false, path = "../../core-primitives/stf-interface" }
 itp-stf-primitives = { default-features = false, path = "../../core-primitives/stf-primitives" }
@@ -27,44 +30,39 @@ itp-utils = { default-features = false, path = "../../core-primitives/utils" }
 sp-io = { default-features = false, features = ["disable_oom", "disable_panic_handler", "disable_allocator"], path = "../../core-primitives/substrate-sgx/sp-io" }
 
 # Substrate dependencies
-frame-support = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.36" }
-frame-system = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.36" }
-pallet-balances = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.36" }
-pallet-sudo = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.36" }
-sp-application-crypto = { default-features = false, features = ["full_crypto"], git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.36" }
-sp-core = { default-features = false, features = ["full_crypto"], git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.36" }
-sp-runtime = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.36" }
+frame-support = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.39" }
+frame-system = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.39" }
+pallet-balances = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.39" }
+pallet-sudo = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.39" }
+sp-application-crypto = { default-features = false, features = ["full_crypto"], git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.39" }
+sp-core = { default-features = false, features = ["full_crypto"], git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.39" }
+sp-runtime = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.39" }
 
 # scs / integritee
-my-node-runtime = { package = "integritee-node-runtime", optional = true, git = "https://github.com/Interstellar-Network/integritee-node.git", branch = "interstellar" }
-# commit: "upgrade to Polkadot v0.9.36"
-# NOTE: use the same rev as the node for consistency
-# see also https://github.com/integritee-network/worker/blob/master/Cargo.lock
-pallet-parentchain = { default-features = false, git = "https://github.com/integritee-network/pallets.git", rev = "1cdcfaa358f74971a1c6e5cdedb0e203c6c8f71c" }
-
+my-node-runtime = { package = "integritee-node-runtime", optional = true, git = "https://github.com/Interstellar-Network/integritee-node.git", rev = "b7bb339445dc8d69e6920fa7d88e4548e8bebb7c" }
+pallet-parentchain = { default-features = false, git = "https://github.com/integritee-network/pallets.git", branch = "polkadot-v0.9.39" }
 
 # [interstellar]
 pallet-mobile-registry = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "main" }
 pallet-ocw-circuits = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "main" }
-pallet-ocw-garble = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "main" }
+pallet-ocw-garble = { version = "5.0.0", default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "main" }
 pallet-tx-validation = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "main" }
 pallet-tx-registry = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "main" }
 
 [dev-dependencies]
-sp-keyring = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.36" }
+sp-keyring = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.39" }
 
 [features]
 default = ["std"]
 evm = ["ita-sgx-runtime/evm"]
-evm_std = [
-    "evm",
-    "ita-sgx-runtime/evm_std",
-]
+evm_std = ["evm", "ita-sgx-runtime/evm_std"]
 sgx = [
     "sgx_tstd",
     "itp-sgx-externalities/sgx",
     "itp-utils/sgx",
     "sp-io/sgx",
+    "itp-node-api/sgx",
+    "itp-node-api-metadata-provider/sgx",
 ]
 std = [
     # crates.io
@@ -79,6 +77,9 @@ std = [
     "itp-storage/std",
     "itp-types/std",
     "itp-utils/std",
+    "itp-node-api/std",
+    "itp-node-api-metadata/std",
+    "itp-node-api-metadata-provider/std",
     # substrate
     "sp-core/std",
     "pallet-balances/std",

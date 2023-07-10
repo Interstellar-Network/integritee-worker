@@ -14,66 +14,64 @@
 	limitations under the License.
 
 */
-
 //! Execute indirect calls, i.e. extrinsics extracted from parentchain blocks
 
 #[cfg(all(not(feature = "std"), feature = "sgx"))]
 use crate::sgx_reexport_prelude::*;
 
-use crate::error::Result;
-use beefy_merkle_tree::{merkle_root, Keccak256};
-use codec::{Decode, Encode};
-use futures::executor;
-use ita_stf::{TrustedCall, TrustedOperation};
-use itp_node_api::{
-	api_client::ParentchainUncheckedExtrinsic,
-	metadata::{pallet_teerex::TeerexCallIndexes, provider::AccessNodeMetadata},
+use crate::{
+	error::{Error, Result},
+	event_filter::{ExtrinsicStatus, FilterEvents},
+	filter_metadata::{EventsFromMetadata, FilterIntoDataFrom},
+	traits::{ExecuteIndirectCalls, IndirectDispatch, IndirectExecutor},
+};
+use binary_merkle_tree::merkle_root;
+use codec::Encode;
+use core::marker::PhantomData;
+use ita_stf::{TrustedCall, TrustedCallSigned};
+use itp_node_api::metadata::{
+	pallet_teerex::TeerexCallIndexes, provider::AccessNodeMetadata, NodeMetadataTrait,
 };
 use itp_sgx_crypto::{key_repository::AccessKey, ShieldingCryptoDecrypt, ShieldingCryptoEncrypt};
 use itp_stf_executor::traits::StfEnclaveSigning;
 use itp_stf_primitives::types::AccountId;
 use itp_top_pool_author::traits::AuthorApi;
-use itp_types::{CallWorkerFn, OpaqueCall, ShardIdentifier, ShieldFundsFn, H256};
+use itp_types::{OpaqueCall, ShardIdentifier, H256};
 use log::*;
 use sp_core::blake2_256;
-use sp_runtime::traits::{Block as ParentchainBlockTrait, Header};
-use std::{sync::Arc, vec::Vec};
-
-/// Trait to execute the indirect calls found in the extrinsics of a block.
-pub trait ExecuteIndirectCalls {
-	/// Scans blocks for extrinsics that ask the enclave to execute some actions.
-	/// Executes indirect invocation calls, including shielding and unshielding calls.
-	/// Returns all unshielding call confirmations as opaque calls and the hashes of executed shielding calls.
-	fn execute_indirect_calls_in_extrinsics<ParentchainBlock>(
-		&self,
-		block: &ParentchainBlock,
-	) -> Result<OpaqueCall>
-	where
-		ParentchainBlock: ParentchainBlockTrait<Hash = H256>;
-}
+use sp_runtime::traits::{Block as ParentchainBlockTrait, Header, Keccak256};
+use std::{fmt::Debug, sync::Arc, vec::Vec};
 
 pub struct IndirectCallsExecutor<
 	ShieldingKeyRepository,
 	StfEnclaveSigner,
 	TopPoolAuthor,
 	NodeMetadataProvider,
+	IndirectCallsFilter,
+	EventCreator,
 > {
-	shielding_key_repo: Arc<ShieldingKeyRepository>,
-	stf_enclave_signer: Arc<StfEnclaveSigner>,
-	top_pool_author: Arc<TopPoolAuthor>,
-	node_meta_data_provider: Arc<NodeMetadataProvider>,
+	pub(crate) shielding_key_repo: Arc<ShieldingKeyRepository>,
+	pub(crate) stf_enclave_signer: Arc<StfEnclaveSigner>,
+	pub(crate) top_pool_author: Arc<TopPoolAuthor>,
+	pub(crate) node_meta_data_provider: Arc<NodeMetadataProvider>,
+	_phantom: PhantomData<(IndirectCallsFilter, EventCreator)>,
 }
-
-impl<ShieldingKeyRepository, StfEnclaveSigner, TopPoolAuthor, NodeMetadataProvider>
-	IndirectCallsExecutor<ShieldingKeyRepository, StfEnclaveSigner, TopPoolAuthor, NodeMetadataProvider>
-where
-	ShieldingKeyRepository: AccessKey,
-	<ShieldingKeyRepository as AccessKey>::KeyType: ShieldingCryptoDecrypt<Error = itp_sgx_crypto::Error>
-		+ ShieldingCryptoEncrypt<Error = itp_sgx_crypto::Error>,
-	StfEnclaveSigner: StfEnclaveSigning,
-	TopPoolAuthor: AuthorApi<H256, H256> + Send + Sync + 'static,
-	NodeMetadataProvider: AccessNodeMetadata,
-	NodeMetadataProvider::MetadataType: TeerexCallIndexes,
+impl<
+		ShieldingKeyRepository,
+		StfEnclaveSigner,
+		TopPoolAuthor,
+		NodeMetadataProvider,
+		IndirectCallsFilter,
+		EventCreator,
+	>
+	IndirectCallsExecutor<
+		ShieldingKeyRepository,
+		StfEnclaveSigner,
+		TopPoolAuthor,
+		NodeMetadataProvider,
+		IndirectCallsFilter,
+		EventCreator,
+	>
 {
 	pub fn new(
 		shielding_key_repo: Arc<ShieldingKeyRepository>,
@@ -86,46 +84,99 @@ where
 			stf_enclave_signer,
 			top_pool_author,
 			node_meta_data_provider,
+			_phantom: Default::default(),
 		}
 	}
+}
 
-	fn handle_shield_funds_xt(
+impl<
+		ShieldingKeyRepository,
+		StfEnclaveSigner,
+		TopPoolAuthor,
+		NodeMetadataProvider,
+		FilterIndirectCalls,
+		EventCreator,
+	> ExecuteIndirectCalls
+	for IndirectCallsExecutor<
+		ShieldingKeyRepository,
+		StfEnclaveSigner,
+		TopPoolAuthor,
+		NodeMetadataProvider,
+		FilterIndirectCalls,
+		EventCreator,
+	> where
+	ShieldingKeyRepository: AccessKey,
+	<ShieldingKeyRepository as AccessKey>::KeyType: ShieldingCryptoDecrypt<Error = itp_sgx_crypto::Error>
+		+ ShieldingCryptoEncrypt<Error = itp_sgx_crypto::Error>,
+	StfEnclaveSigner: StfEnclaveSigning,
+	TopPoolAuthor: AuthorApi<H256, H256> + Send + Sync + 'static,
+	NodeMetadataProvider: AccessNodeMetadata,
+	FilterIndirectCalls: FilterIntoDataFrom<NodeMetadataProvider::MetadataType>,
+	NodeMetadataProvider::MetadataType: NodeMetadataTrait + Clone,
+	FilterIndirectCalls::Output: IndirectDispatch<Self> + Encode + Debug,
+	EventCreator: EventsFromMetadata<NodeMetadataProvider::MetadataType>,
+{
+	fn execute_indirect_calls_in_extrinsics<ParentchainBlock>(
 		&self,
-		xt: ParentchainUncheckedExtrinsic<ShieldFundsFn>,
-	) -> Result<()> {
-		let (call, account_encrypted, amount, shard) = xt.function;
-		info!("Found ShieldFunds extrinsic in block: \nCall: {:?} \nAccount Encrypted {:?} \nAmount: {} \nShard: {}",
-        	call, account_encrypted, amount, bs58::encode(shard.encode()).into_string());
+		block: &ParentchainBlock,
+		events: &[u8],
+	) -> Result<OpaqueCall>
+	where
+		ParentchainBlock: ParentchainBlockTrait<Hash = H256>,
+	{
+		let block_number = *block.header().number();
+		let block_hash = block.hash();
 
-		debug!("decrypt the account id");
+		debug!("Scanning block {:?} for relevant xt", block_number);
+		let mut executed_calls = Vec::<H256>::new();
 
-		let shielding_key = self.shielding_key_repo.retrieve_key()?;
-		let account_vec = shielding_key.decrypt(&account_encrypted)?;
+		let events = self
+			.node_meta_data_provider
+			.get_from_metadata(|metadata| {
+				EventCreator::create_from_metadata(metadata.clone(), block_hash, events)
+			})?
+			.ok_or_else(|| Error::Other("Could not create events from metadata".into()))?;
 
-		let account = AccountId::decode(&mut account_vec.as_slice())?;
+		let xt_statuses = events.get_extrinsic_statuses()?;
+		debug!("xt_statuses:: {:?}", xt_statuses);
 
-		let enclave_account_id = self.stf_enclave_signer.get_enclave_account()?;
-		let trusted_call = TrustedCall::balance_shield(enclave_account_id, account, amount);
-		let signed_trusted_call =
-			self.stf_enclave_signer.sign_call_with_self(&trusted_call, &shard)?;
-		let trusted_operation = TrustedOperation::indirect_call(signed_trusted_call);
-
-		let encrypted_trusted_call = shielding_key.encrypt(&trusted_operation.encode())?;
-		self.submit_trusted_call(shard, encrypted_trusted_call);
-		Ok(())
-	}
-
-	fn submit_trusted_call(&self, shard: ShardIdentifier, encrypted_trusted_call: Vec<u8>) {
-		let top_submit_future =
-			async { self.top_pool_author.submit_top(encrypted_trusted_call, shard).await };
-		if let Err(e) = executor::block_on(top_submit_future) {
-			error!("Error adding indirect trusted call to TOP pool: {:?}", e);
+		// This would be catastrophic but should never happen
+		if xt_statuses.len() != block.extrinsics().len() {
+			return Err(Error::Other("Extrinsic Status and Extrinsic count not equal".into()))
 		}
+
+		for (xt_opaque, xt_status) in block.extrinsics().iter().zip(xt_statuses.iter()) {
+			let encoded_xt_opaque = xt_opaque.encode();
+
+			let maybe_call = self.node_meta_data_provider.get_from_metadata(|metadata| {
+				FilterIndirectCalls::filter_into_from_metadata(&encoded_xt_opaque, metadata)
+			})?;
+
+			let call = match maybe_call {
+				Some(c) => c,
+				None => continue,
+			};
+
+			if let ExtrinsicStatus::Failed = xt_status {
+				warn!("Parentchain Extrinsic Failed, {:?} wont be dispatched", call);
+				continue
+			}
+
+			if let Err(e) = call.dispatch(self) {
+				warn!("Error executing the indirect call: {:?}. Error {:?}", call, e);
+			} else {
+				executed_calls.push(hash_of(&call));
+			}
+		}
+
+		// Include a processed parentchain block confirmation for each block.
+		self.create_processed_parentchain_block_call::<ParentchainBlock>(
+			block_hash,
+			executed_calls,
+			block_number,
+		)
 	}
 
-	/// Creates a processed_parentchain_block extrinsic for a given parentchain block hash and the merkle executed extrinsics.
-	///
-	/// Calculates the merkle root of the extrinsics. In case no extrinsics are supplied, the root will be a hash filled with zeros.
 	fn create_processed_parentchain_block_call<ParentchainBlock>(
 		&self,
 		block_hash: H256,
@@ -142,132 +193,93 @@ where
 		let root: H256 = merkle_root::<Keccak256, _>(extrinsics);
 		Ok(OpaqueCall::from_tuple(&(call, block_hash, block_number, root)))
 	}
-
-	fn is_shield_funds_function(&self, function: &[u8; 2]) -> bool {
-		self.node_meta_data_provider
-			.get_from_metadata(|meta_data| {
-				let call = match meta_data.shield_funds_call_indexes() {
-					Ok(c) => c,
-					Err(e) => {
-						error!("Failed to get the indexes for the shield_funds call from the metadata: {:?}", e);
-						return false
-					},
-				};
-				function == &call
-			})
-			.unwrap_or(false)
-	}
-
-	fn is_call_worker_function(&self, function: &[u8; 2]) -> bool {
-		self.node_meta_data_provider
-			.get_from_metadata(|meta_data| {
-				let call = match meta_data.call_worker_call_indexes() {
-					Ok(c) => c,
-					Err(e) => {
-						error!("Failed to get the indexes for the call_worker call from the metadata: {:?}", e);
-						return false
-					},
-				};
-				function == &call
-			})
-			.unwrap_or(false)
-	}
 }
 
-impl<ShieldingKeyRepository, StfEnclaveSigner, TopPoolAuthor, NodeMetadataProvider>
-	ExecuteIndirectCalls
+impl<
+		ShieldingKeyRepository,
+		StfEnclaveSigner,
+		TopPoolAuthor,
+		NodeMetadataProvider,
+		FilterIndirectCalls,
+		EventFilter,
+	> IndirectExecutor
 	for IndirectCallsExecutor<
 		ShieldingKeyRepository,
 		StfEnclaveSigner,
 		TopPoolAuthor,
 		NodeMetadataProvider,
+		FilterIndirectCalls,
+		EventFilter,
 	> where
 	ShieldingKeyRepository: AccessKey,
 	<ShieldingKeyRepository as AccessKey>::KeyType: ShieldingCryptoDecrypt<Error = itp_sgx_crypto::Error>
 		+ ShieldingCryptoEncrypt<Error = itp_sgx_crypto::Error>,
 	StfEnclaveSigner: StfEnclaveSigning,
 	TopPoolAuthor: AuthorApi<H256, H256> + Send + Sync + 'static,
-	NodeMetadataProvider: AccessNodeMetadata,
-	NodeMetadataProvider::MetadataType: TeerexCallIndexes,
 {
-	fn execute_indirect_calls_in_extrinsics<ParentchainBlock>(
-		&self,
-		block: &ParentchainBlock,
-	) -> Result<OpaqueCall>
-	where
-		ParentchainBlock: ParentchainBlockTrait<Hash = H256>,
-	{
-		let block_number = *block.header().number();
-		let block_hash = block.hash();
-		debug!("Scanning block {:?} for relevant xt", block_number);
-		let mut executed_shielding_calls = Vec::<H256>::new();
-		for xt_opaque in block.extrinsics().iter() {
-			let encoded_xt_opaque = xt_opaque.encode();
-
-			// Found ShieldFunds extrinsic in block.
-			if let Ok(xt) = ParentchainUncheckedExtrinsic::<ShieldFundsFn>::decode(
-				&mut encoded_xt_opaque.as_slice(),
-			) {
-				if self.is_shield_funds_function(&xt.function.0) {
-					let hash_of_xt = hash_of(&xt);
-
-					match self.handle_shield_funds_xt(xt) {
-						Err(e) => {
-							error!("Error performing shield funds. Error: {:?}", e);
-						},
-						Ok(_) => {
-							// Cache successfully executed shielding call.
-							executed_shielding_calls.push(hash_of_xt)
-						},
-					}
-				}
-			}
-
-			// Found CallWorker extrinsic in block.
-			// No else-if here! Because the same opaque extrinsic can contain multiple Fns at once (this lead to intermittent M6 failures)
-			if let Ok(xt) = ParentchainUncheckedExtrinsic::<CallWorkerFn>::decode(
-				&mut encoded_xt_opaque.as_slice(),
-			) {
-				if self.is_call_worker_function(&xt.function.0) {
-					let (_, request) = xt.function;
-					let (shard, cypher_text) = (request.shard, request.cyphertext);
-					debug!("Found trusted call extrinsic, submitting it to the top pool");
-					self.submit_trusted_call(shard, cypher_text);
-				}
-			}
+	fn submit_trusted_call(&self, shard: ShardIdentifier, encrypted_trusted_call: Vec<u8>) {
+		if let Err(e) = futures::executor::block_on(
+			self.top_pool_author.submit_top(encrypted_trusted_call, shard),
+		) {
+			error!("Error adding indirect trusted call to TOP pool: {:?}", e);
 		}
+	}
 
-		// Include a processed parentchain block confirmation for each block.
-		self.create_processed_parentchain_block_call::<ParentchainBlock>(
-			block_hash,
-			executed_shielding_calls,
-			block_number,
-		)
+	fn decrypt(&self, encrypted: &[u8]) -> Result<Vec<u8>> {
+		let key = self.shielding_key_repo.retrieve_key()?;
+		Ok(key.decrypt(encrypted)?)
+	}
+
+	fn encrypt(&self, value: &[u8]) -> Result<Vec<u8>> {
+		let key = self.shielding_key_repo.retrieve_key()?;
+		Ok(key.encrypt(value)?)
+	}
+
+	fn get_enclave_account(&self) -> Result<AccountId> {
+		Ok(self.stf_enclave_signer.get_enclave_account()?)
+	}
+
+	fn sign_call_with_self(
+		&self,
+		trusted_call: &TrustedCall,
+		shard: &ShardIdentifier,
+	) -> Result<TrustedCallSigned> {
+		Ok(self.stf_enclave_signer.sign_call_with_self(trusted_call, shard)?)
 	}
 }
 
-fn hash_of<T: Encode>(xt: &T) -> H256 {
+pub(crate) fn hash_of<T: Encode>(xt: &T) -> H256 {
 	blake2_256(&xt.encode()).into()
 }
 
 #[cfg(test)]
 mod test {
 	use super::*;
-	use codec::Encode;
-	use itc_parentchain_test::parentchain_block_builder::ParentchainBlockBuilder;
+	use crate::{
+		filter_metadata::{ShieldFundsAndCallWorkerFilter, TestEventCreator},
+		parentchain_parser::ParentchainExtrinsicParser,
+	};
+	use codec::{Decode, Encode};
+	use ita_stf::TrustedOperation;
+	use itc_parentchain_test::ParentchainBlockBuilder;
 	use itp_node_api::{
-		api_client::{ParentchainExtrinsicParams, ParentchainExtrinsicParamsBuilder},
+		api_client::{
+			ExtrinsicParams, ParentchainAdditionalParams, ParentchainExtrinsicParams,
+			ParentchainUncheckedExtrinsic,
+		},
 		metadata::{metadata_mocks::NodeMetadataMock, provider::NodeMetadataRepository},
 	};
 	use itp_sgx_crypto::mocks::KeyRepositoryMock;
 	use itp_stf_executor::mocks::StfEnclaveSignerMock;
+	use itp_stf_primitives::types::AccountId;
 	use itp_test::mock::shielding_crypto_mock::ShieldingCryptoMock;
 	use itp_top_pool_author::mocks::AuthorApiMock;
-	use itp_types::{Block, Request, ShardIdentifier};
+	use itp_types::{
+		parentchain::Address, Block, CallWorkerFn, Request, ShardIdentifier, ShieldFundsFn,
+	};
 	use sp_core::{ed25519, Pair};
 	use sp_runtime::{MultiSignature, OpaqueExtrinsic};
 	use std::assert_matches::assert_matches;
-	use substrate_api_client::{ExtrinsicParams, GenericAddress};
 
 	type TestShieldingKeyRepo = KeyRepositoryMock<ShieldingCryptoMock>;
 	type TestStfEnclaveSigner = StfEnclaveSignerMock;
@@ -278,6 +290,8 @@ mod test {
 		TestStfEnclaveSigner,
 		TestTopPoolAuthor,
 		TestNodeMetadataRepository,
+		ShieldFundsAndCallWorkerFilter<ParentchainExtrinsicParser>,
+		TestEventCreator,
 	>;
 
 	type Seed = [u8; 32];
@@ -299,7 +313,7 @@ mod test {
 			.build();
 
 		indirect_calls_executor
-			.execute_indirect_calls_in_extrinsics(&parentchain_block)
+			.execute_indirect_calls_in_extrinsics(&parentchain_block, &Vec::new())
 			.unwrap();
 
 		assert_eq!(1, top_pool_author.pending_tops(shard_id()).unwrap().len());
@@ -324,7 +338,7 @@ mod test {
 			.build();
 
 		indirect_calls_executor
-			.execute_indirect_calls_in_extrinsics(&parentchain_block)
+			.execute_indirect_calls_in_extrinsics(&parentchain_block, &Vec::new())
 			.unwrap();
 
 		assert_eq!(1, top_pool_author.pending_tops(shard_id()).unwrap().len());
@@ -392,7 +406,7 @@ mod test {
 		let shield_funds_indexes = dummy_metadata.shield_funds_call_indexes().unwrap();
 		ParentchainUncheckedExtrinsic::<ShieldFundsFn>::new_signed(
 			(shield_funds_indexes, target_account, 1000u128, shard_id()),
-			GenericAddress::Address32([1u8; 32]),
+			Address::Address32([1u8; 32]),
 			MultiSignature::Ed25519(default_signature()),
 			default_extrinsic_params().signed_extra(),
 		)
@@ -405,7 +419,7 @@ mod test {
 
 		ParentchainUncheckedExtrinsic::<CallWorkerFn>::new_signed(
 			(call_worker_indexes, request),
-			GenericAddress::Address32([1u8; 32]),
+			Address::Address32([1u8; 32]),
 			MultiSignature::Ed25519(default_signature()),
 			default_extrinsic_params().signed_extra(),
 		)
@@ -429,7 +443,7 @@ mod test {
 			0,
 			0,
 			H256::default(),
-			ParentchainExtrinsicParamsBuilder::default(),
+			ParentchainAdditionalParams::default(),
 		)
 	}
 	fn test_fixtures(

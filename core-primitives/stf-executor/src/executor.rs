@@ -26,7 +26,7 @@ use ita_stf::{
 	stf_sgx::{shards_key_hash, storage_hashes_to_update_per_shard},
 	ParentchainHeader, TrustedCallSigned, TrustedOperation,
 };
-use itp_node_api::metadata::{pallet_teerex::TeerexCallIndexes, provider::AccessNodeMetadata};
+use itp_node_api::metadata::{provider::AccessNodeMetadata, NodeMetadataTrait};
 use itp_ocall_api::{EnclaveAttestationOCallApi, EnclaveOnChainOCallApi};
 use itp_sgx_externalities::{SgxExternalitiesTrait, StateHash};
 use itp_stf_interface::{
@@ -56,14 +56,14 @@ where
 	StateHandler: HandleState<HashType = H256>,
 	StateHandler::StateT: SgxExternalitiesTrait + Encode,
 	NodeMetadataRepository: AccessNodeMetadata,
-	NodeMetadataRepository::MetadataType: TeerexCallIndexes,
+	NodeMetadataRepository::MetadataType: NodeMetadataTrait,
 	Stf: UpdateState<
 			StateHandler::StateT,
 			<StateHandler::StateT as SgxExternalitiesTrait>::SgxExternalitiesDiffType,
-		> + StateCallInterface<TrustedCallSigned, StateHandler::StateT>,
+		> + StateCallInterface<TrustedCallSigned, StateHandler::StateT, NodeMetadataRepository>,
 	<StateHandler::StateT as SgxExternalitiesTrait>::SgxExternalitiesDiffType:
 		IntoIterator<Item = (Vec<u8>, Option<Vec<u8>>)> + From<BTreeMap<Vec<u8>, Option<Vec<u8>>>>,
-	<Stf as StateCallInterface<TrustedCallSigned, StateHandler::StateT>>::Error: Debug,
+	<Stf as StateCallInterface<TrustedCallSigned, StateHandler::StateT, NodeMetadataRepository>>::Error: Debug,
 {
 	pub fn new(
 		ocall_api: Arc<OCallApi>,
@@ -108,15 +108,11 @@ where
 			return Ok(ExecutedOperation::failed(top_or_hash))
 		}
 
-		let unshield_funds_fn = self
-			.node_metadata_repo
-			.get_from_metadata(|m| m.unshield_funds_call_indexes())??;
-
 		// Necessary because light client sync may not be up to date
 		// see issue #208
 		debug!("Update STF storage!");
 
-		let storage_hashes = trusted_call.clone().get_storage_hashes_to_update();
+		let storage_hashes = <TrustedCallSigned as ExecuteCall<NodeMetadataRepository>>::get_storage_hashes_to_update(trusted_call.clone());
 		let update_map = self
 			.ocall_api
 			.get_multiple_storages_verified(storage_hashes, header)
@@ -131,7 +127,7 @@ where
 			state,
 			trusted_call.clone(),
 			&mut extrinsic_call_backs,
-			unshield_funds_fn,
+			self.node_metadata_repo.clone(),
 		) {
 			error!("Stf execute failed: {:?}", e);
 			return Ok(ExecutedOperation::failed(top_or_hash))
@@ -235,16 +231,16 @@ where
 	StateHandler::StateT: SgxExternalitiesTrait + Encode + StateHash,
 	<StateHandler::StateT as SgxExternalitiesTrait>::SgxExternalitiesType: Encode,
 	NodeMetadataRepository: AccessNodeMetadata,
-	NodeMetadataRepository::MetadataType: TeerexCallIndexes,
+	NodeMetadataRepository::MetadataType: NodeMetadataTrait,
 	Stf: UpdateState<
 			StateHandler::StateT,
 			<StateHandler::StateT as SgxExternalitiesTrait>::SgxExternalitiesDiffType,
-		> + StateCallInterface<TrustedCallSigned, StateHandler::StateT>,
+		> + StateCallInterface<TrustedCallSigned, StateHandler::StateT, NodeMetadataRepository>,
 	<StateHandler::StateT as SgxExternalitiesTrait>::SgxExternalitiesDiffType:
 		IntoIterator<Item = (Vec<u8>, Option<Vec<u8>>)>,
 	<StateHandler::StateT as SgxExternalitiesTrait>::SgxExternalitiesDiffType:
 		From<BTreeMap<Vec<u8>, Option<Vec<u8>>>>,
-	<Stf as StateCallInterface<TrustedCallSigned, StateHandler::StateT>>::Error: Debug,
+	<Stf as StateCallInterface<TrustedCallSigned, StateHandler::StateT, NodeMetadataRepository>>::Error: Debug,
 {
 	type Externalities = StateHandler::StateT;
 

@@ -17,8 +17,8 @@
 
 use crate::{
 	get_layer_two_nonce,
+	trusted_cli::TrustedCli,
 	trusted_command_utils::{get_accountid_from_str, get_identifiers, get_pair_from_str},
-	trusted_commands::TrustedArgs,
 	trusted_operation::perform_trusted_operation,
 	Cli, CliResult, CliResultOk,
 };
@@ -43,19 +43,27 @@ pub struct TransferCommand {
 }
 
 impl TransferCommand {
-	pub(crate) fn run(&self, cli: &Cli, trusted_args: &TrustedArgs) -> CliResult {
+	pub(crate) fn run(&self, cli: &Cli, trusted_args: &TrustedCli) -> CliResult {
 		let from = get_pair_from_str(trusted_args, &self.from);
 		let to = get_accountid_from_str(&self.to);
 		info!("from ss58 is {}", from.public().to_ss58check());
 		info!("to ss58 is {}", to.to_ss58check());
 
-		println!("send trusted call transfer from {} to {}: {}", from.public(), to, self.amount);
 		let (mrenclave, shard) = get_identifiers(trusted_args);
 		let nonce = get_layer_two_nonce!(from, cli, trusted_args);
+		println!(
+			"send trusted call transfer from {} to {}: {}, nonce: {}",
+			from.public(),
+			to,
+			self.amount,
+			nonce
+		);
 		let top: TrustedOperation =
 			TrustedCall::balance_transfer(from.public().into(), to, self.amount)
 				.sign(&KeyPair::Sr25519(Box::new(from)), nonce, &mrenclave, &shard)
 				.into_trusted_operation(trusted_args.direct);
-		Ok(perform_trusted_operation(cli, trusted_args, &top).map(|_| CliResultOk::None)?)
+		let res = perform_trusted_operation(cli, trusted_args, &top).map(|_| CliResultOk::None)?;
+		info!("trusted call transfer executed");
+		Ok(res)
 	}
 }

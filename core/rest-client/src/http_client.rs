@@ -110,9 +110,16 @@ impl Send for SendWithCertificateVerification {
 		request: &mut Request,
 		writer: &mut Vec<u8>,
 	) -> Result<Response, Error> {
-		request
-			.send_with_pem_certificate(writer, Some(self.root_certificate.to_string()))
-			.map_err(Error::HttpReqError)
+		match request.send_with_pem_certificate(writer, Some(self.root_certificate.to_string())) {
+			Ok(response) => Ok(response),
+			Err(e) => {
+				error!(
+					"SendWithCertificateVerification::execute_send_request received error: {:#?}",
+					&e
+				);
+				Err(Error::HttpReqError(e))
+			},
+		}
 	}
 }
 
@@ -237,7 +244,7 @@ where
 			.read_timeout(self.timeout)
 			.write_timeout(self.timeout);
 
-		trace!("{:?}", request);
+		trace!("request is: {:?}", request);
 
 		let mut writer = Vec::new();
 
@@ -282,8 +289,7 @@ mod tests {
 	use std::vec::Vec;
 
 	const HTTPBIN_ROOT_CERT: &str = include_str!("fixtures/amazon_root_ca_1_v3.pem");
-	const COINGECKO_ROOT_CERTIFICATE: &str =
-		include_str!("fixtures/baltimore_cyber_trust_root_v3.pem");
+	const COINGECKO_ROOT_CERTIFICATE: &str = include_str!("fixtures/lets_encrypt_root_cert.pem");
 
 	#[test]
 	fn join_url_adds_query_parameters() {

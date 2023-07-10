@@ -19,21 +19,33 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use crate::error::Result;
+use crate::{
+	error::Result, pallet_sidechain::SidechainCallIndexes, pallet_teerex::TeerexCallIndexes,
+};
 use codec::{Decode, Encode};
 use sp_core::storage::StorageKey;
-use substrate_api_client::{Metadata, MetadataError};
 
 pub use crate::error::Error;
+pub use itp_api_client_types::{Metadata, MetadataError};
 
 pub mod error;
 pub mod pallet_sidechain;
-pub mod pallet_system;
 pub mod pallet_teeracle;
 pub mod pallet_teerex;
 
 #[cfg(feature = "mocks")]
 pub mod metadata_mocks;
+
+pub trait NodeMetadataTrait: TeerexCallIndexes + SidechainCallIndexes {}
+impl<T: TeerexCallIndexes + SidechainCallIndexes> NodeMetadataTrait for T {}
+
+impl TryFrom<NodeMetadata> for Metadata {
+	type Error = crate::error::Error;
+
+	fn try_from(value: NodeMetadata) -> core::result::Result<Self, Self::Error> {
+		value.node_metadata.ok_or(Error::MetadataNotSet)
+	}
+}
 
 #[derive(Default, Encode, Decode, Debug, Clone)]
 pub struct NodeMetadata {
@@ -93,6 +105,7 @@ impl NodeMetadata {
 			None => Err(Error::MetadataNotSet),
 			Some(m) => m
 				.storage_value_key(storage_prefix, storage_key_name)
+				.map(|key| key.into())
 				.map_err(Error::NodeMetadata),
 		}
 	}
@@ -107,6 +120,7 @@ impl NodeMetadata {
 			None => Err(Error::MetadataNotSet),
 			Some(m) => m
 				.storage_map_key::<K>(storage_prefix, storage_key_name, map_key)
+				.map(|key| key.into())
 				.map_err(Error::NodeMetadata),
 		}
 	}
@@ -122,6 +136,7 @@ impl NodeMetadata {
 			None => Err(Error::MetadataNotSet),
 			Some(m) => m
 				.storage_double_map_key(storage_prefix, storage_key_name, first, second)
+				.map(|key| key.into())
 				.map_err(Error::NodeMetadata),
 		}
 	}

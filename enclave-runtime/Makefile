@@ -46,8 +46,8 @@ RUSTFLAGS :="-C target-feature=+avx2"
 # and a bunch of other issues with the same "__assert_fail"
 # TODO? ifeq ($(DEBUG_BUILD), 1)
 ifeq ($(SGX_DEBUG), 1)
-	OUTPUT_PATH := release
-	CARGO_TARGET := --release
+	OUTPUT_PATH := debug
+	CARGO_TARGET := 
 else
 	OUTPUT_PATH := release
 	CARGO_TARGET := --release

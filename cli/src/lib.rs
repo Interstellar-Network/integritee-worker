@@ -27,23 +27,27 @@ extern crate chrono;
 extern crate env_logger;
 extern crate log;
 
+mod attesteer;
 mod base_cli;
 mod benchmark;
 mod command_utils;
-pub mod commands;
+mod error;
 #[cfg(feature = "evm")]
 mod evm;
 #[cfg(feature = "teeracle")]
 mod oracle;
 mod trusted_base_cli;
+mod trusted_cli;
 mod trusted_command_utils;
-mod trusted_commands;
 mod trusted_operation;
+
+pub mod commands;
 
 use crate::commands::Commands;
 use clap::Parser;
-use snafu::prelude::*;
-use substrate_api_client::RuntimeMetadataPrefixed;
+use sp_core::{H160, H256};
+use substrate_api_client::Metadata;
+use thiserror::Error;
 
 pub use pallet_ocw_garble::DisplayStrippedCircuitsPackage as PalletOcwGarbleDisplayStrippedCircuitsPackage;
 
@@ -77,24 +81,51 @@ pub struct Cli {
 }
 
 pub enum CliResultOk {
-	DisplayStrippedCircuitsPackage { circuit: PalletOcwGarbleDisplayStrippedCircuitsPackage },
-	PubKeysBase58 { pubkeys_sr25519: Option<Vec<String>>, pubkeys_ed25519: Option<Vec<String>> },
-	Balance { balance: u128 },
-	MrEnclaveBase58 { mr_enclaves: Vec<String> },
-	Metadata { metadata: RuntimeMetadataPrefixed },
+	PubKeysBase58 {
+		pubkeys_sr25519: Option<Vec<String>>,
+		pubkeys_ed25519: Option<Vec<String>>,
+	},
+	Balance {
+		balance: u128,
+	},
+	MrEnclaveBase58 {
+		mr_enclaves: Vec<String>,
+	},
+	Metadata {
+		metadata: Metadata,
+	},
+	H256 {
+		hash: H256,
+	},
+	/// Result of "EvmCreateCommands": execution_address
+	H160 {
+		hash: H160,
+	},
+	// TODO should ideally be removed; or at least drastically less used
+	// We WANT all commands exposed by the cli to return something useful for the caller(ie instead of printing)
 	None,
+	// [interstellar]
+	DisplayStrippedCircuitsPackage {
+		circuit: PalletOcwGarbleDisplayStrippedCircuitsPackage,
+	},
 }
 
-#[derive(Debug, Snafu)]
+#[derive(Debug, Error)]
 pub enum CliError {
-	#[snafu(display("default error: {:?}", msg))]
-	Default { msg: String },
-	#[snafu(display("trusted operation error: {:?}", msg))]
+	#[error("trusted operation error: {:?}", msg)]
 	TrustedOp { msg: String },
+	#[error("EvmReadCommands error: {:?}", msg)]
+	EvmRead { msg: String },
+	#[error("error: {:?}", msg)]
+	Default { msg: String },
 }
 
 pub type CliResult = Result<CliResultOk, CliError>;
 
+/// This is used for the commands that directly call `perform_trusted_operation`
+/// which typically return `CliResultOk::None`
+///
+/// eg: `SetBalanceCommand`,`TransferCommand`,`UnshieldFundsCommand`
 impl From<trusted_operation::TrustedOperationError> for CliError {
 	fn from(value: trusted_operation::TrustedOperationError) -> Self {
 		CliError::TrustedOp { msg: value.to_string() }
