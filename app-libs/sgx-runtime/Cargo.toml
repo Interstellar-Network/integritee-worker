@@ -51,8 +51,8 @@ pallet-parentchain = { default-features = false, git = "https://github.com/integ
 
 # [interstellar]
 pallet-mobile-registry = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "main" }
-pallet-ocw-circuits = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "main" }
-pallet-ocw-garble = { version = "5.0.0", default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "main" }
+pallet-ocw-circuits = { version = "^6.0.0", default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "main" }
+pallet-ocw-garble = { version = "^6.0.0", default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "main" }
 pallet-tx-validation = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "main" }
 pallet-tx-registry = { default-features = false, git = "https://github.com/Interstellar-Network/pallets", branch = "main" }
 
@@ -90,11 +90,10 @@ std = [
     "pallet-timestamp/std",
     "pallet-transaction-payment/std",
     "pallet-parentchain/std",
-    # [interstellar]
-	"pallet-mobile-registry/std",
-	"pallet-ocw-circuits/std",
-	"pallet-ocw-garble/std",
-	"pallet-tx-validation/std",
+    "pallet-mobile-registry/std",
+    "pallet-ocw-circuits/std",
+    "pallet-ocw-garble/std",
+    "pallet-tx-validation/std",
     "sp-api/std",
     "sp-core/std",
     "sp-inherents/std",

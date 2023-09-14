@@ -59,7 +59,7 @@ its-rpc-handler = { path = "../sidechain/rpc-handler" }
 its-storage = { path = "../sidechain/storage" }
 
 # scs / integritee
-my-node-runtime = { package = "integritee-node-runtime", git = "https://github.com/Interstellar-Network/integritee-node.git", rev = "b7bb339445dc8d69e6920fa7d88e4548e8bebb7c" }
+my-node-runtime = { package = "integritee-node-runtime", git = "https://github.com/Interstellar-Network/integritee-node.git", rev = "d8b4cdcd472e55fbd8e049d768043ba8cd96891d" }
 sgx-verify = { git = "https://github.com/integritee-network/pallets.git", branch = "polkadot-v0.9.39" }
 # `default-features = false` to remove the jsonrpsee dependency.
 substrate-api-client = { default-features = false, features = ["std", "ws-client"], git = "https://github.com/scs/substrate-api-client.git", branch = "polkadot-v0.9.39" }

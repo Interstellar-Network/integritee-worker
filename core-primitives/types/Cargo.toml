@@ -25,7 +25,7 @@ sp-runtime = { default-features = false, git = "https://github.com/paritytech/su
 sp-std = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.39" }
 
 # integritee-node
-my-node-runtime = { package = "integritee-node-runtime", optional = true, git = "https://github.com/Interstellar-Network/integritee-node.git", rev = "b7bb339445dc8d69e6920fa7d88e4548e8bebb7c" }
+my-node-runtime = { package = "integritee-node-runtime", optional = true, git = "https://github.com/Interstellar-Network/integritee-node.git", rev = "d8b4cdcd472e55fbd8e049d768043ba8cd96891d" }
 
 [features]
 default = ["std"]
