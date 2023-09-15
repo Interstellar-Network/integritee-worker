@@ -106,15 +106,16 @@ sgx_urts = { version = "1.1.6", git = "https://github.com/apache/incubator-teacl
 #[patch."https://github.com/integritee-network/http_req"]
 #http_req = {path = '..//http_req' }
 
+# TEMP https://github.com/integritee-network/worker/issues/1388
+# FIX/WORKAROUND for "the package `itc-rpc-client` depends on `frame-metadata`, with features: `v14` but `frame-metadata` does not have these features"
+[patch."https://github.com/paritytech/frame-metadata.git"]
+frame-metadata = { version = "=15.1.0" }
+
 ################################################################################
 # CAREFUL/WARNING: the patches below SHOULD match the one in enclave-runtime/Cargo.toml
 
-# [patch."https://github.com/Interstellar-Network/swanky.git"]
-# fancy-garbling = { path = "../swanky/fancy-garbling/" }
-
 # [patch."https://github.com/Interstellar-Network/lib-garble-rs.git"]
 # lib-garble-rs = { path = "../lib-garble-rs/lib-garble-rs/" }
-# ipfs-client-http-req = { path = "../lib-garble-rs/ipfs-client-http-req/" }
 
 # [patch."https://github.com/Interstellar-Network/integritee-node.git"]
 # integritee-node-runtime = { path = "../integritee-node/runtime/" }
@@ -128,5 +129,6 @@ sgx_urts = { version = "1.1.6", git = "https://github.com/apache/incubator-teacl
 # pallet-tx-validation = { path = "../pallets/pallets/tx-validation/" }
 
 # [patch."https://github.com/Interstellar-Network/rs-common.git"]
-# http-grpc-client = { path = "../rs-common/http-grpc-client/" }
+# interstellar-http-client = { path = "../rs-common/http-client/" }
+# interstellar-ipfs-client = { path = "../rs-common/ipfs-client-http-req/" }
 ################################################################################

@@ -17,7 +17,9 @@ jobs:
       # Sporadic error: "  cargo:warning=rocksdb/db/db_impl/db_impl_secondary.cc:684:1: fatal error: error writing to /tmp/ccnRl4w5.s: No space left on device"
       # Sometimes work depending on version, OS, etc.
       - name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space@main
+        # FIX https://github.com/jlumbroso/free-disk-space/issues/9
+        # https://github.com/jlumbroso/free-disk-space/pull/11
+        uses: hirnidrin/free-disk-space@main
         with:
           # this might remove tools that are actually needed,
           # if set to "true" but frees about 6 GB
